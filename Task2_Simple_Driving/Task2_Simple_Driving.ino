@@ -21,7 +21,7 @@
 // define any other constants
 // todo
 #define MAXPWM 255
-#define MOTPWM 100
+#define MOTPWM 30
 #define MOTOFF 0
 #define LEFTADJ -1
 #define RIGHTADJ 1
@@ -34,19 +34,21 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(16, 90);  //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
 // mtrn3100::IMUOdometry IMU_odometry;
 
+bool move = true;
+
 void setup() {
   Serial.begin(9600);
   // Wire.begin();
   //Set up the IMU
   // byte status = mpu.begin();
-  Serial.print(F("MPU6050 status: "));
+  // Serial.print(F("MPU6050 status: "));
   // Serial.println(status);
   // while (status != 0) {}  // stop everything if could not connect to MPU6050
 
-  Serial.println(F("Calculating offsets, do not move MPU6050"));
-  delay(1000);
+  // Serial.println(F("Calculating offsets, do not move MPU6050"));
+  delay(3000);
   // mpu.calcOffsets(true, true);
-  Serial.println("Done!\n");
+  // Serial.println("Done!\n");
 }
 
 void loop() {
@@ -62,9 +64,18 @@ void loop() {
   Serial.println();
 
   // basic movement
-  // leftMotor.setPWM(MOTPWM * LEFTADJ);
-  // rightMotor.setPWM(MOTPWM * RIGHTADJ);
-  delay(500);
-  //leftMotor.setPWM(MOTOFF);
-  //rightMotor.setPWM(MOTOFF);
+  if (move) {
+    leftMotor.setPWM(MOTPWM * LEFTADJ);
+    rightMotor.setPWM(MOTPWM * RIGHTADJ);
+
+    if (encoder_odometry.getX() >= 100) {
+      move = false;
+    }
+  } else {
+    // delay(500);
+    leftMotor.setPWM(MOTOFF);
+    rightMotor.setPWM(MOTOFF);    
+  }
+
+  
 }

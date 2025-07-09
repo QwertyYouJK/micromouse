@@ -14,8 +14,9 @@ public:
         float delta_left_radians = leftValue - lastLPos; // MAKE SURE THE ENCODERS COUNT UP CORRECTLY IE. THEYARE NOT THE WRONG DIRECTION 
         float delta_right_radians = rightValue - lastRPos; // MAKE SURE THE ENCODERS COUNT UP CORRECTLY IE. THEY ARE NOT THE WRONG DIRECTION 
 
-        //Serial.println(delta_left_radians);
-        //Serial.println(delta_right_radians);
+        // Serial.print(leftValue); Serial.print(" - "); Serial.print(lastLPos); Serial.print(" = ");
+        // Serial.println(delta_left_radians);
+        // Serial.println(delta_right_radians);
 
         //TODO: Calculate the foward kinematics
         float delta_theta = -R * delta_left_radians / B + R * delta_right_radians / B;
