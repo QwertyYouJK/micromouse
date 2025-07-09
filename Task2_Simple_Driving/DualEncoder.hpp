@@ -22,7 +22,7 @@ public:
     // Encoder function used to update the encoder
     void readLeftEncoder() {
         noInterrupts();
-        direction = digitalRead(mot1_dir) ? 1 : -1;
+        direction = digitalRead(mot1_dir) ? -1 : 1;
         l_count += direction;
         interrupts();
     }
@@ -36,11 +36,11 @@ public:
 
     // Helper function which to convert encouder count to radians
     float getLeftRotation() {
-        return (static_cast<float>(l_count) / counts_per_revolution ) * 2* PI;
+        return (static_cast<float>(l_count) / counts_per_revolution ) * 2 * PI;
     }
 
     float getRightRotation() {
-        return (static_cast<float>(r_count) / counts_per_revolution ) * 2* PI;
+        return (static_cast<float>(r_count) / counts_per_revolution ) * 2 * PI;
     }
 
 private:

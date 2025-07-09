@@ -35,30 +35,20 @@ public:
       }
       analogWrite(pwm_pin, finalPWM);
 
-      Serial.print("Set pin ");
-      Serial.print(pwm_pin);
-      Serial.print(" to ");
-      Serial.println(finalPWM);
+      // Serial.print("Set pin ");
+      // Serial.print(pwm_pin);
+      // Serial.print(" to ");
+      // Serial.println(finalPWM);
     }
 
     // moves dist amount of mm
-    void move(Motor left, Motor right, int16_t dist, int16_t pwm) {
-      int16_t delay_time = dist / mm_per_delay;
+    void move(int16_t dist, int16_t pwm) {
       
-      // 200mm = 1500 delay (100 PWM)
-      left.setPWM(pwm * -1);
-      right.setPWM(pwm);
-
-      delay(delay_time);
-
-      left.setPWM(0);
-      right.setPWM(0);
     }
 
 private:
     const uint8_t pwm_pin;
     const uint8_t dir_pin;
-    const uint16_t mm_per_delay = 0.133333333333333333;
 };
 
 }  // namespace mtrn3100
