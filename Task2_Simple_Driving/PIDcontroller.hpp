@@ -6,56 +6,43 @@ namespace mtrn3100 {
 
 class PIDController {
 public:
-    // constructor
     PIDController(float kp, float ki, float kd) : kp(kp), ki(ki), kd(kd) {}
 
     // Compute the output signal required from the current/actual value.
-    // convert from microseconds to seconds
     float compute(float input) {
+      
         curr_time = micros();
         dt = static_cast<float>(curr_time - prev_time) / 1e6;
         prev_time = curr_time;
 
-        // Check division by zero
-        if (dt == 0) {
-            dt = 1e-6; 
-        }
-
         error = setpoint - (input - zero_ref);
 
-        // Proportional term
-        float p_out = kp * error;
+        // TODO: IMPLIMENT PID CONTROLLER
+        integral = 0;
+        derivative = 0;
+        output = 0;
 
-        // Integral term
-        integral += error * dt;
-        float i_out = ki * integral;
-
-        // Derivative term
-        derivative = (error - prev_error) / dt;
-        float d_out = kd * derivative;
-
-        // COmbine
-        output = p_out + i_out + d_out;
-
-        prev_error = error;
+        prev_error = 0;
 
         return output;
     }
 
-    float getError() {
-      return error;
-    }
-
+    // Function used to return the last calculated error. 
+    // The error is the difference between the desired position and current position. 
     void tune(float p, float i, float d) {
         kp = p;
         ki = i;
         kd = d;
     }
 
-    void zeroAndTarget(float zero, float target) {
-        // Reset integral, start new movement
-        integral = 0;
-        prev_error = 0;
+    float getError() {
+      return error;
+    }
+
+    // This must be called before trying to achieve a setpoint.
+    // The first argument becomes the new zero reference point.
+    // Target is the setpoint value.
+    void zeroAndSetTarget(float zero, float target) {
         prev_time = micros();
         zero_ref = zero;
         setpoint = target;
@@ -71,6 +58,8 @@ private:
     float prev_error = 0;
     float setpoint = 0;
     float zero_ref = 0;
+
+    
 };
 
 }  // namespace mtrn3100
