@@ -60,7 +60,7 @@ public:
     const uint8_t mot1_int,mot1_dir,mot2_int,mot2_dir;
     volatile int8_t direction;
     float position = 0;
-    uint16_t counts_per_revolution = 700;
+    uint16_t counts_per_revolution = 684;
     volatile long l_count = 0;
     volatile long r_count = 0;
     uint32_t prev_time;

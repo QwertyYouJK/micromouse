@@ -1,6 +1,13 @@
 #pragma once
 
+#include "motor.hpp"
+#include "DualEncoder.hpp"
+#include "EncoderOdometry.hpp"
+
 #include <math.h>
+
+#define REDUPWM 5
+#define MINPWM 30
 
 namespace mtrn3100 {
 
@@ -39,7 +46,9 @@ public:
 
         prev_error = error;
 
-        return output;
+        int signCheck = output < 0 ? -1 : 1;
+
+        return signCheck * (output / REDUPWM < MINPWM ? MINPWM : output / REDUPWM);
     }
 
     float getError() {
@@ -52,7 +61,7 @@ public:
         kd = d;
     }
 
-    void zeroAndTarget(float zero, float target) {
+    void zeroTarget(float zero, float target) {
         // Reset integral, start new movement
         integral = 0;
         prev_error = 0;
@@ -60,6 +69,7 @@ public:
         zero_ref = zero;
         setpoint = target;
     }
+
 
 public:
     uint32_t prev_time, curr_time = micros();

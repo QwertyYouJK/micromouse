@@ -2,6 +2,7 @@
 #include "DualEncoder.hpp"
 #include "EncoderOdometry.hpp"
 #include "PIDcontroller.hpp"
+
 #include "Wire.h"
 // #include <MPU6050_light.h>
 
@@ -23,109 +24,83 @@
 // motor constants
 #define MAXPWM 255 // max PWM
 #define MOTPWM 30 // example PWM
+#define ACPTPWM 50 // acceptable PWM
 #define MOTOFF 0 // off
 #define LEFTADJ -1 // adjustment values
 #define RIGHTADJ 1 // adjustment values
 
 // robot constants
-#define WHRAD 16 // Wheel radius
-#define AXLEN 90 // Axle length
+#define WHRAD 22.5 // Wheel radius
+#define AXLEN 103 // Axle length
 
-// PID controller constants
-#define kP 12 // proportional gain
-#define kI 12 //12 // integral gain
-#define kD 12 //50 // derivative gain
+// motor PID controller constants
+#define MKP 8 // proportional gain
+#define MKI 0.2 // integral gain
+#define MKD 0.9 // derivative gain
+#define MBOUND 2 // error, millimetres
 
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
 mtrn3100::Motor rightMotor(MOTRPWM, MOTRDIR);
 
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
-mtrn3100::EncoderOdometry encoder_odometry(WHRAD, AXLEN);  //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
+mtrn3100::EncoderOdometry encoder_odometry(WHRAD, AXLEN);
 // mtrn3100::IMUOdometry IMU_odometry;
 
-mtrn3100::PIDController pid(kP, kI, kD); // kp, ki, kd
+mtrn3100::PIDController leftPid(MKP, MKI, MKD);
+mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
-bool allowMove = true;
-int target = 100;
+//
 
 void setup() {
   Serial.begin(9600);
-  // Wire.begin();
-  //Set up the IMU
-  // byte status = mpu.begin();
-  // Serial.print(F("MPU6050 status: "));
-  // Serial.println(status);
-  // while (status != 0) {}  // stop everything if could not connect to MPU6050
-
-  // Serial.println(F("Calculating offsets, do not move MPU6050"));
-  pid.zeroAndTarget(0, 100);
   Serial.println("ran!");
-  delay(3000);
-  // mpu.calcOffsets(true, true);
-  // Serial.println("Done!\n");
+  delay(1000);
 
 }
 
+void moveStraightOdom(float input, bool moveCheck) {
+      float target = input / WHRAD;
+      float startLeft = (WHRAD * encoder.getLeftRotation());
+      float startRight = (WHRAD * encoder.getRightRotation());
+
+      leftPid.zeroTarget(startLeft, startLeft + input);
+      rightPid.zeroTarget(startRight, startRight + input);
+
+      Serial.print("moving straight: ");
+      Serial.print(input);
+      Serial.println(" mm.");
+
+      while(moveCheck) {
+        float currLeft = (WHRAD * encoder.getLeftRotation());
+        float currRight = (WHRAD * encoder.getRightRotation());
+
+        float outLeft = leftPid.compute(currLeft);
+        float outRight = rightPid.compute(currRight);
+
+        leftMotor.setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
+        rightMotor.setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+        if (abs(leftPid.getError()) < MBOUND && abs(rightPid.getError()) < MBOUND) {
+          moveCheck = false;
+        }
+      }
+
+      leftMotor.setPWM(MOTOFF);
+      rightMotor.setPWM(MOTOFF);
+      
+      delay(10);
+      
+    }
+
 void loop() {
+  bool allowMove = true;
 
-  encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-
-  // Serial.print("ODOM:\t\t");
-  // Serial.print(encoder_odometry.getX());
-  // Serial.print(",\t\t");
-  // Serial.print(encoder_odometry.getY());
-  // Serial.print(",\t\t");
-  // Serial.print(encoder_odometry.getH());
-  // Serial.println();
-
-  // // basic movement
-  // if (allowMove) {
-  //   leftMotor.setPWM(MOTPWM * LEFTADJ);
-  //   rightMotor.setPWM(MOTPWM * RIGHTADJ);
-
-  //   if (encoder_odometry.getX() >= 100) {
-  //     allowMove = false;
-  //   }
-  // } else {
-  //   delay(500);
-  //   leftMotor.setPWM(MOTOFF);
-  //   rightMotor.setPWM(MOTOFF);    
-  // }
-
+  //encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
   
-  while (allowMove) {
-    encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-    float currentPos = encoder_odometry.getX();
-    float raw_output = pid.compute(currentPos);
-    float pwmSignal = constrain(raw_output, -50, 50);
-    if (pwmSignal < 10 && pwmSignal > 0) {
-      pwmSignal = 10;
-    }
-    if (pwmSignal > -10 && pwmSignal < 0) {
-      pwmSignal = -10;
-    }
-    leftMotor.setPWM(pwmSignal * LEFTADJ);
-    rightMotor.setPWM(pwmSignal * RIGHTADJ);
-        
-    Serial.print("Target: ");
-    Serial.print(target);
-    Serial.print(" | Current: ");
-    Serial.print(currentPos);
-    Serial.print(" | Error: ");
-    Serial.print(pid.getError());
-    Serial.print(" | PWM: ");
-    Serial.println(pwmSignal);
-    delay(10); // Small delay
-    if (currentPos == target + 5 || currentPos == target - 5) {
-      Serial.println("within range!");
-      allowMove = false;
-    }
-  }
+  //Serial.println(encoder.getLeftRotation());
 
-  leftMotor.setPWM(MOTOFF);
-  rightMotor.setPWM(MOTOFF);
-
-
+  moveStraightOdom(500, allowMove);
+  delay(999999999);
   
 }
