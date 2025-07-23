@@ -25,58 +25,62 @@ namespace mtrn3100 {
 
 class Controller {
 public:
-    Controller(const DualEncoder& en, 
-               const Motor& leftM,
-               const Motor& rightM,
-               const PIDController& leftPid,
-               const PIDController& rightPid)
+    Controller(DualEncoder* en,
+               EncoderOdometry* enOdom,
+               Motor* leftM,
+               Motor* rightM,
+               PIDController* leftPid,
+               PIDController* rightPid)
         : encoder(en)
+        , encoderOdometry(enOdom)
         , leftMotor(leftM)
         , rightMotor(rightM)
         , leftPid(leftPid)
         , rightPid(rightPid)
     {}
 
-    void moveStraightOdom(float input, bool moveCheck) {
-        float target = input / WHRAD;
-        float startLeft = (WHRAD * encoder.getLeftRotation());
-        float startRight = (WHRAD * encoder.getRightRotation());
+    void moveStraightOdom(float input) {
+      float target = input / WHRAD;
+      float startLeft = (WHRAD * encoder->getLeftRotation());
+      float startRight = (WHRAD * encoder->getRightRotation());
 
-        leftPid.zeroTarget(startLeft, startLeft + input);
-        rightPid.zeroTarget(startRight, startRight + input);
+      leftPid->zeroTarget(startLeft, startLeft + input);
+      rightPid->zeroTarget(startRight, startRight + input);
 
-        Serial.print("moving straight: ");
-        Serial.print(input);
-        Serial.println(" mm.");
+      Serial.print("moving straight: ");
+      Serial.print(input);
+      Serial.println(" mm.");
 
-        while(moveCheck) {
-        float currLeft = (WHRAD * encoder.getLeftRotation());
-        float currRight = (WHRAD * encoder.getRightRotation());
+      while(1) {
+        float currLeft = (WHRAD * encoder->getLeftRotation());
+        float currRight = (WHRAD * encoder->getRightRotation());
+        Serial.println(currLeft);
 
-        float outLeft = leftPid.compute(currLeft);
-        float outRight = rightPid.compute(currRight);
+        float outLeft = leftPid->compute(currLeft);
+        float outRight = rightPid->compute(currRight);
 
-        leftMotor.setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
-        rightMotor.setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
+        leftMotor->setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
+        rightMotor->setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
 
-        if (abs(leftPid.getError()) < MBOUND && abs(rightPid.getError()) < MBOUND) {
-            moveCheck = false;
+        if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
+          break;
         }
-        }
+      }
 
-        leftMotor.setPWM(MOTOFF);
-        rightMotor.setPWM(MOTOFF);
-
-        delay(10);
-
+      leftMotor->setPWM(MOTOFF);
+      rightMotor->setPWM(MOTOFF);
+      
+      delay(10);
+      
     }
 
 private:
-    DualEncoder encoder;
-    Motor leftMotor;
-    Motor rightMotor;
-    PIDController leftPid;
-    PIDController rightPid;
+    DualEncoder* encoder;
+    EncoderOdometry* encoderOdometry;
+    Motor* leftMotor;
+    Motor* rightMotor;
+    PIDController* leftPid;
+    PIDController* rightPid;
 };
 
 }

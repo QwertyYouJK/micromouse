@@ -52,7 +52,7 @@ public:
     }
 
     float getError() {
-      return error;
+        return error;
     }
 
     void tune(float p, float i, float d) {
