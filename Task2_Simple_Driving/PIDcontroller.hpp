@@ -1,6 +1,13 @@
 #pragma once
 
+#include "motor.hpp"
+#include "DualEncoder.hpp"
+#include "EncoderOdometry.hpp"
+
 #include <math.h>
+
+#define REDUPWM 5
+#define MINPWM 30
 
 namespace mtrn3100 {
 
@@ -24,7 +31,9 @@ public:
 
         prev_error = 0;
 
-        return output;
+        int signCheck = output < 0 ? -1 : 1;
+
+        return signCheck * (output / REDUPWM < MINPWM ? MINPWM : output / REDUPWM);
     }
 
     // Function used to return the last calculated error. 
@@ -39,10 +48,10 @@ public:
       return error;
     }
 
-    // This must be called before trying to achieve a setpoint.
-    // The first argument becomes the new zero reference point.
-    // Target is the setpoint value.
-    void zeroAndSetTarget(float zero, float target) {
+    void zeroTarget(float zero, float target) {
+        // Reset integral, start new movement
+        integral = 0;
+        prev_error = 0;
         prev_time = micros();
         zero_ref = zero;
         setpoint = target;
