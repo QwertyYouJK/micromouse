@@ -51,58 +51,17 @@ mtrn3100::EncoderOdometry encoder_odometry(WHRAD, AXLEN);
 mtrn3100::PIDController leftPid(MKP, MKI, MKD);
 mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
-mtrn3100::Controller controller(encoder, leftMotor, rightMotor, leftPid, rightPid);
+mtrn3100::Controller controller(&encoder, &encoder_odometry, &leftMotor, &rightMotor, &leftPid, &rightPid);
 
 void setup() {
   Serial.begin(9600);
   Serial.println("ran!");
   delay(1000);
-
 }
-/*
-void moveStraightOdom(float input, bool moveCheck) {
-      float target = input / WHRAD;
-      float startLeft = (WHRAD * encoder.getLeftRotation());
-      float startRight = (WHRAD * encoder.getRightRotation());
-
-      leftPid.zeroTarget(startLeft, startLeft + input);
-      rightPid.zeroTarget(startRight, startRight + input);
-
-      Serial.print("moving straight: ");
-      Serial.print(input);
-      Serial.println(" mm.");
-
-      while(moveCheck) {
-        float currLeft = (WHRAD * encoder.getLeftRotation());
-        float currRight = (WHRAD * encoder.getRightRotation());
-
-        float outLeft = leftPid.compute(currLeft);
-        float outRight = rightPid.compute(currRight);
-
-        leftMotor.setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
-        rightMotor.setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
-
-        if (abs(leftPid.getError()) < MBOUND && abs(rightPid.getError()) < MBOUND) {
-          moveCheck = false;
-        }
-      }
-
-      leftMotor.setPWM(MOTOFF);
-      rightMotor.setPWM(MOTOFF);
-      
-      delay(10);
-      
-    }
-*/
-bool allowMove = true;
 
 void loop() {
   
-  //encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-  
-  //Serial.println(encoder.getLeftRotation());
-
-  controller.moveStraightOdom(200, allowMove);
+  controller.moveStraightOdom(200);
   delay(999999999);
   
 }
