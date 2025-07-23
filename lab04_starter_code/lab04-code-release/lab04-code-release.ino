@@ -50,7 +50,7 @@ void setup() {
 
 void read_angle() {
     mpu.update();
-    int z_offset = 0;
+    //int z_offset = 0;
 
     if((millis()-timer)>10){ // print data every 10ms
     	Serial.print("X : ");
@@ -58,8 +58,9 @@ void read_angle() {
 	    Serial.print("\tY : ");
 	    Serial.print(mpu.getAngleY());
 	    Serial.print("\tZ : ");
-	    Serial.println(mpu.getAngleZ() - z_offset);
-        z_offset += 10;
+        Serial.println(mpu.getAngleZ());
+	    //Serial.println(mpu.getAngleZ() - z_offset);
+        //z_offset += 10;
 	    timer = millis();  
     }
 }

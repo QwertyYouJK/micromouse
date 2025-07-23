@@ -2,6 +2,7 @@
 #include "DualEncoder.hpp"
 #include "EncoderOdometry.hpp"
 #include "PIDcontroller.hpp"
+#include "Controller.hpp"
 
 #include "Wire.h"
 // #include <MPU6050_light.h>
@@ -50,7 +51,7 @@ mtrn3100::EncoderOdometry encoder_odometry(WHRAD, AXLEN);
 mtrn3100::PIDController leftPid(MKP, MKI, MKD);
 mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
-//
+mtrn3100::Controller controller(encoder, leftMotor, rightMotor, leftPid, rightPid);
 
 void setup() {
   Serial.begin(9600);
@@ -58,7 +59,7 @@ void setup() {
   delay(1000);
 
 }
-
+/*
 void moveStraightOdom(float input, bool moveCheck) {
       float target = input / WHRAD;
       float startLeft = (WHRAD * encoder.getLeftRotation());
@@ -92,15 +93,16 @@ void moveStraightOdom(float input, bool moveCheck) {
       delay(10);
       
     }
+*/
+bool allowMove = true;
 
 void loop() {
-  bool allowMove = true;
-
+  
   //encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
   
   //Serial.println(encoder.getLeftRotation());
 
-  moveStraightOdom(500, allowMove);
+  controller.moveStraightOdom(200, allowMove);
   delay(999999999);
   
 }
