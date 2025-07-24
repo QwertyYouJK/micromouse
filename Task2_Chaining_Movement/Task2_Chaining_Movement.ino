@@ -66,44 +66,14 @@ void setup() {
   Serial.begin(9600);
   // IMU setup
   Serial.println("Starting up!");
-  Wire.begin();
-  mpu.begin();
-  mpu.calcOffsets(true, true);
   delay(1000);
   Serial.println("Done");
+
 }
 
 void loop() {
-  IMU.update();
-  IMU.update_xyz(mpu.getAccX(), mpu.getAccY(), mpu.getAccZ() - 1.0);
 
-  float original_yaw = IMU.get_yaw(); // Get original yaw
-  Serial.print("original "); Serial.println(original_yaw);
 
-  if (IMU.get_accZ() - 1 >= 0.4) {
-    Serial.println("Lifted");
-    // Task2_lifted = true;
-    
-    // wait for robot to come on ground
-    unsigned long startTime = millis();
-    while (millis() - startTime < 3000) {
-      IMU.update();
-    }
-    
-    IMU.update();
-    float curr_yaw = IMU.get_yaw(); // get updated yaw
-    // Serial.print("curr  "); Serial.println(curr_yaw);
-    float difference = original_yaw - curr_yaw;
-    if (difference < 0) {
-      difference -= 10;
-    } else {
-      difference += 10;
-    }
-    // Serial.println(difference);
-
-    controller.turnOdom(difference);
-  }
-  
   // small loop delay
   delay(50);
 }

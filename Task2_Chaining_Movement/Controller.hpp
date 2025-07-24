@@ -43,7 +43,7 @@ public:
     {}
 
     
-
+    // (in mm) +ve move forward, -ve backward
     void moveStraightOdom(float input) {
         float startLeft = (WHRAD * encoder->getLeftRotation());
         float startRight = (WHRAD * encoder->getRightRotation());
@@ -73,6 +73,7 @@ public:
         delay(10);      
     }
 
+    // Positive means Counterclockwise, negative means CW
     void turnOdom(float myAngleDegrees) {
         encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
         float startAngle = encoderOdometry->getH(); //rad

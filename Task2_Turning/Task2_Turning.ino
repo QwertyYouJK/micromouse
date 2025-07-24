@@ -71,22 +71,26 @@ void setup() {
   mpu.calcOffsets(true, true);
   delay(1000);
   Serial.println("Done");
+
+  // 90 degree CW turn
+  controller.turnOdom(-90);
 }
 
 void loop() {
+
   IMU.update();
   IMU.update_xyz(mpu.getAccX(), mpu.getAccY(), mpu.getAccZ() - 1.0);
 
   float original_yaw = IMU.get_yaw(); // Get original yaw
   Serial.print("original "); Serial.println(original_yaw);
 
-  if (IMU.get_accZ() - 1 >= 0.4) {
+  if (IMU.get_accZ() - 1 >= 0.35) {
     Serial.println("Lifted");
     // Task2_lifted = true;
     
     // wait for robot to come on ground
     unsigned long startTime = millis();
-    while (millis() - startTime < 3000) {
+    while (millis() - startTime < 5000) {
       IMU.update();
     }
     
