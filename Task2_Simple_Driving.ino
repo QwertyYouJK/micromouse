@@ -24,21 +24,28 @@
 // motor constants
 #define MAXPWM 255 // max PWM
 #define MOTPWM 30 // example PWM
-#define ACPTPWM 50 // acceptable PWM
+#define ACPTPWM 200 // acceptable PWM
 #define MOTOFF 0 // off
 #define LEFTADJ -1 // adjustment values
 #define RIGHTADJ 1 // adjustment values
 
 // robot constants
-#define WHRAD 22.5 // Wheel radius
-#define AXLEN 103 // Axle length
+#define WHRAD 24 // 22.5 // Wheel radius
+#define AXLEN 102.5 // Axle length
 
 // motor PID controller constants
-#define MKP 8 // proportional gain
-#define MKI 0.2 // integral gain
-#define MKD 0.9 // derivative gain
+#define MKP 50 // proportional gain
+#define MKI 0 // integral gain
+#define MKD 5 // derivative gain
+
+// for turning:
+#define TKP 5000
+#define TKI 0
+#define TKD 0
+
+// straight movement, turning allowed error:
 #define MBOUND 2 // error, millimetres
-#define ABOUND 0.1 // error, radians
+#define ABOUND 0.01 // error, radians
 
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
@@ -48,7 +55,7 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoderOdometry(WHRAD, AXLEN);
 // mtrn3100::IMUOdometry IMU_odometry;
 
-mtrn3100::PIDController turnPid(MKP, MKI, MKD);
+mtrn3100::PIDController turnPid(TKP, TKI, TKD);
 mtrn3100::PIDController leftPid(MKP, MKI, MKD);
 mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
@@ -87,61 +94,51 @@ void moveStraightOdom(float input, bool moveCheck) {
   delay(10);      
 }
 
-// void leftTurnOdom(bool moveCheck) {
-//   encoderOdometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-//   float startAngle = encoderOdometry.getH();
+void turnOdom(float myAngleDegrees, bool moveCheck) {
+  encoderOdometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
+  float startAngle = encoderOdometry.getH(); //rad
+  float targetAngle = startAngle + (myAngleDegrees * PI / 180);
+  turnPid.newTarget(targetAngle);
+  // should always be between -PI and +PI radians
+  float flip = 1;
+  if (targetAngle <= -PI && targetAngle < 0) {
+    // right turn
+    flip = -1;
+  }
 
-//   turnPid.zeroTarget(startAngle, startAngle + PI/2);
+  while(moveCheck) {
+    encoderOdometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
+    float currAngle = (encoderOdometry.getH());
+    float turnPWM = turnPid.compute(currAngle);
 
-//   Serial.print("turning left from: ");
-//   Serial.print(startAngle);
-//   Serial.print(" to: ");
-//   Serial.println(startAngle + PI/2);
+    leftMotor.setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
+    rightMotor.setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
 
-//   while(moveCheck) {
-//     encoderOdometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-//     float currAngle = (encoderOdometry.getH());
+    if (abs(turnPid.getError()) < ABOUND) {
+      moveCheck = false;
+      Serial.println("completed");
+    }
+  }
 
-//     float outLeft = leftPid.compute(-currAngle);
-//     float outRight = rightPid.compute(currAngle);
-
-//     leftMotor.setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
-//     rightMotor.setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
-
-//     Serial.print("speed set to: ");
-//     Serial.println(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
-
-//     Serial.print("Left Error: ");
-//     Serial.println(leftPid.getError());
-//     Serial.print("Right Error: ");
-//     Serial.println(rightPid.getError());
-
-//     if (abs(leftPid.getError()) < ABOUND && abs(rightPid.getError()) < ABOUND) {
-//       moveCheck = false;
-//       Serial.println("completed");
-//     }
-//   }
-
-//   leftMotor.setPWM(MOTOFF);
-//   rightMotor.setPWM(MOTOFF);
-//   delay(10);
-// }
-  
-void rightTurnOdom(bool moveCheck) {
-
+  leftMotor.setPWM(MOTOFF);
+  rightMotor.setPWM(MOTOFF);
+  delay(10);
 }
+
 
 void loop() {
   bool allowMove = true;
 
-  moveStraightOdom(100, allowMove);
+  moveStraightOdom(200, allowMove);
 
-  //leftTurnOdom(allowMove);
+  // delay(1000);
 
-  delay(5000);
+  // turnOdom(-90, allowMove);
 
-  moveStraightOdom(-100, allowMove);
+  delay(999999999);
 
-  delay(5000);
+  // moveStraightOdom(-100, allowMove);
+
+  // delay(1000);
   
 }
