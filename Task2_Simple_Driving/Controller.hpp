@@ -30,14 +30,18 @@ public:
                Motor* leftM,
                Motor* rightM,
                PIDController* leftPid,
-               PIDController* rightPid)
+               PIDController* rightPid,
+               PIDController* turnPid)
         : encoder(en)
         , encoderOdometry(enOdom)
         , leftMotor(leftM)
         , rightMotor(rightM)
         , leftPid(leftPid)
         , rightPid(rightPid)
+        , turnPid(turnPid)
     {}
+
+    
 
     void moveStraightOdom(float input) {
       float target = input / WHRAD;
@@ -54,6 +58,8 @@ public:
       while(1) {
         float currLeft = (WHRAD * encoder->getLeftRotation());
         float currRight = (WHRAD * encoder->getRightRotation());
+
+        // float currDist = encoderOdometry.get
         Serial.println(currLeft);
 
         float outLeft = leftPid->compute(currLeft);
@@ -74,6 +80,37 @@ public:
       
     }
 
+    void turnOdom(float myAngleDegrees) {
+        encoderOdometry->update(encoder.getLeftRotation(),encoder.getRightRotation());
+        float startAngle = encoderOdometry->getH(); //rad
+        float targetAngle = startAngle + (myAngleDegrees * PI / 180);
+        turnPid->newTarget(targetAngle);
+        // should always be between -PI and +PI radians
+        float flip = 1;
+        if (targetAngle <= -PI && targetAngle < 0) {
+            // right turn
+            flip = -1;
+        }
+
+        while(1) {
+            encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+            float currAngle = (encoderOdometry->getH());
+            float turnPWM = turnPid->compute(currAngle);
+
+            leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
+            rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+            if (abs(turnPid->getError()) < ABOUND) {
+                break;
+                Serial.println("completed");
+            }
+        }
+
+        leftMotor->setPWM(MOTOFF);
+        rightMotor->setPWM(MOTOFF);
+        delay(10);
+    }
+
 private:
     DualEncoder* encoder;
     EncoderOdometry* encoderOdometry;
@@ -81,6 +118,7 @@ private:
     Motor* rightMotor;
     PIDController* leftPid;
     PIDController* rightPid;
+    PIDController* turnPid;
 };
 
 }
