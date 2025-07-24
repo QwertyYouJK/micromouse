@@ -2,13 +2,21 @@
 #define IMU_ODOMETRY_HPP
 
 #include <Arduino.h>
+#include "Wire.h"
+#include <MPU6050_light.h>
+
+MPU6050 mpu(Wire);
 
 namespace mtrn3100 {
     class IMUOdometry {
     public:
-        IMUOdometry() : x(0), y(0), vx(0), vy(0), lastUpdateTime(millis()) {}
+        IMUOdometry() : x(0), y(0), z(0), vx(0), vy(0), vz(0), yaw_angle(0), lastUpdateTime(millis()) {}
+        
+        void update() {
+            mpu.update();
+        }
 
-        void update(float accel_x, float accel_y) {
+        void update_xyz(float accel_x, float accel_y, float accel_z) {
             unsigned long currentTime = millis();
             float dt = (currentTime - lastUpdateTime);  // Convert to seconds
             lastUpdateTime = currentTime;
@@ -16,35 +24,28 @@ namespace mtrn3100 {
             // Differentiate acceleration to get velocity
             vx += accel_x * dt/1000;
             vy += accel_y * dt/1000;
+            vz += accel_z * dt/1000;
 
-            // TODO: Differentiate velocity to get position
+            // Differentiate velocity to get position
             x += vx * dt/1000;
             y += vy * dt/1000;
+            z += vz * dt/1000;
         }
-
-        void read_angle() {
-            mpu.update();
-            //int z_offset = 0;
-
-            if((millis()-timer)>10){ // print data every 10ms
-                Serial.print("X : ");
-                Serial.print(mpu.getAngleX());
-                Serial.print("\tY : ");
-                Serial.print(mpu.getAngleY());
-                Serial.print("\tZ : ");
-                Serial.println(mpu.getAngleZ());
-                //Serial.println(mpu.getAngleZ() - z_offset);
-                //z_offset += 10;
-                timer = millis();  
-            }
-        }
-
+        
         float getX() const { return x; }
         float getY() const { return y; }
+        float getZ() const { return z; }
 
+        float get_accX() { return mpu.getAccX(); }
+        float get_accY() { return mpu.getAccY(); }
+        float get_accZ() { return mpu.getAccZ(); }
+
+        float get_yaw() { return mpu.getAngleZ(); }
+        
     private:
-        float x, y;
-        float vx, vy;
+        float x, y, z;
+        float vx, vy, vz;
+        float yaw_angle;
         unsigned long lastUpdateTime;
     };
 }
