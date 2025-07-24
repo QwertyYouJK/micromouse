@@ -4,7 +4,7 @@
 #include "PIDcontroller.hpp"
 #include "Controller.hpp"
 #include "IMUOdometry.hpp"
-
+#include "Keyboard.h"
 #include "Wire.h"
 #include <MPU6050_light.h>
 
@@ -66,13 +66,41 @@ void setup() {
   Serial.begin(9600);
   // IMU setup
   Serial.println("Starting up!");
+  // Keyboard.begin();
   delay(1000);
   Serial.println("Done");
-
 }
 
-void loop() {
+char receivedChar;
+bool newData = false;
+char sequence[] = "lfrffrfl";
 
+void loop() {
+  for (int i = 0; sequence[i] != '\0'; i++) {
+    char receivedChar = sequence[i];
+    Serial.print("Executing: ");
+    Serial.println(receivedChar);
+
+    switch(receivedChar) {
+      case 'l':
+        Serial.println("Typed l");
+        controller.turnOdom(90);
+        break;
+      case 'r':
+        controller.turnOdom(-90);
+        break;
+      case 'f':
+        controller.moveStraightOdom(180);
+        break;
+      case 'b':
+        controller.moveStraightOdom(-180);
+        break;
+      case 's':
+        delay(1000000);
+        break;
+    }
+  }
+  
 
   // small loop delay
   delay(50);
