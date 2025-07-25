@@ -19,7 +19,7 @@
 #define AXLEN 103 // Axle length
 
 // PID
-#define MBOUND 2 // error, millimetres
+#define MBOUND 3 // error, millimetres
 #define ABOUND 0.01 // error, radians
 
 namespace mtrn3100 {
@@ -79,9 +79,11 @@ public:
         float startAngle = encoderOdometry->getH(); //rad
         float targetAngle = startAngle + (myAngleDegrees * PI / 180);
         turnPid->newTarget(targetAngle);
+        Serial.println(startAngle);
+        Serial.println(targetAngle);
         // should always be between -PI and +PI radians
         float flip = 1;
-        if (targetAngle <= -PI && targetAngle < 0) {
+        if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
             // right turn
             flip = -1;
         }
@@ -90,19 +92,23 @@ public:
             encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
             float currAngle = (encoderOdometry->getH());
             float turnPWM = turnPid->compute(currAngle);
-
+            Serial.print("current Angle: ");
+            Serial.println(currAngle);
             leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
             rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
-
+            Serial.print("error: ");
+            Serial.println(turnPid->getError());
             if (abs(turnPid->getError()) < ABOUND) {
-                break;
+                turnPid->newTarget(0);
                 Serial.println("completed");
+                break;
             }
         }
 
         leftMotor->setPWM(MOTOFF);
         rightMotor->setPWM(MOTOFF);
         delay(10);
+        flip = 1;
     }
 
 private:

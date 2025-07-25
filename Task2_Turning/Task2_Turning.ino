@@ -43,9 +43,9 @@
 #define MBOUND 2 // error, millimetres
 
 // for turning:
-#define TKP 5000
-#define TKI 0
-#define TKD 0
+#define TKP 50
+#define TKI 1
+#define TKD 2
 #define ABOUND 0.01 // error, radians
 
 // define motor classes
@@ -62,6 +62,9 @@ mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
 mtrn3100::Controller controller(&encoder, &encoder_odometry, &leftMotor, &rightMotor, &leftPid, &rightPid, &turnPid);
 
+float original_yaw = IMU.get_yaw(); // Get original yaw
+
+
 void setup() {
   Serial.begin(9600);
   // IMU setup
@@ -74,39 +77,61 @@ void setup() {
 
   // 90 degree CW turn
   controller.turnOdom(-90);
+  controller.turnOdom(0.001);
+  IMU.update();
+  original_yaw = IMU.get_yaw(); // Get original yaw
 }
 
 void loop() {
-
   IMU.update();
-  IMU.update_xyz(mpu.getAccX(), mpu.getAccY(), mpu.getAccZ() - 1.0);
+  // IMU.update_xyz(mpu.getAccX(), mpu.getAccY(), mpu.getAccZ() - 1.0);
 
-  float original_yaw = IMU.get_yaw(); // Get original yaw
-  Serial.print("original "); Serial.println(original_yaw);
+  // Serial.print("original "); Serial.println(IMU.get_yaw());
 
-  if (IMU.get_accZ() - 1 >= 0.35) {
-    Serial.println("Lifted");
-    // Task2_lifted = true;
+  // if (IMU.get_accZ() - 1 >= 0.35) {
+  //   float original_yaw = IMU.get_yaw(); // Get original yaw
+  //   Serial.print("lifted "); Serial.println(original_yaw);
+  //   // Task2_lifted = true;
     
-    // wait for robot to come on ground
-    unsigned long startTime = millis();
-    while (millis() - startTime < 5000) {
-      IMU.update();
-    }
-    
+  //   // wait for robot to come on ground
+  //   unsigned long startTime = millis();
+  //   while (millis() - startTime < 5000) {
+  //     // Serial.print("stored original "); Serial.println(original_yaw);
+  //     IMU.update();
+  //   }
+  //   // delay(5000);    
     IMU.update();
     float curr_yaw = IMU.get_yaw(); // get updated yaw
-    // Serial.print("curr  "); Serial.println(curr_yaw);
+  //   // Serial.print("curr  "); Serial.println(curr_yaw);
     float difference = original_yaw - curr_yaw;
-    if (difference < 0) {
-      difference -= 10;
-    } else {
-      difference += 10;
-    }
-    // Serial.println(difference);
+    // if (difference < 0) {
+    //   difference -= 10;
+    // } else {
+    //   difference += 10;
+    // }
 
-    controller.turnOdom(difference);
-  }
+    // controller.turnOdom(difference);
+    // controller.turnOdom(0.001);
+    Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
+    
+    if (abs(difference) >= 1) {
+      IMU.update();
+      if (difference < 0) {
+        leftMotor.setPWM(-30);
+        rightMotor.setPWM(-30);
+      } else {
+        leftMotor.setPWM(30);
+        rightMotor.setPWM(30);
+      }
+      // curr_yaw = IMU.get_yaw(); // get updated yaw
+      // difference = original_yaw - curr_yaw;
+    } else {
+      leftMotor.setPWM(0);
+      rightMotor.setPWM(0);
+    }
+      
+
+  // }
   
   // small loop delay
   delay(50);

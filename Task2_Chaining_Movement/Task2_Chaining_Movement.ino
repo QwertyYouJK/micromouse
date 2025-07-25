@@ -43,9 +43,9 @@
 #define MBOUND 2 // error, millimetres
 
 // for turning:
-#define TKP 5000
-#define TKI 0
-#define TKD 0
+#define TKP 50
+#define TKI 1
+#define TKD 2
 #define ABOUND 0.01 // error, radians
 
 // define motor classes
@@ -67,13 +67,13 @@ void setup() {
   // IMU setup
   Serial.println("Starting up!");
   // Keyboard.begin();
-  delay(1000);
+  delay(2000);
   Serial.println("Done");
 }
 
 char receivedChar;
 bool newData = false;
-char sequence[] = "lfrffrfl";
+char sequence[] = "rdfdrdfdfdldldfds";
 
 void loop() {
   for (int i = 0; sequence[i] != '\0'; i++) {
@@ -83,17 +83,23 @@ void loop() {
 
     switch(receivedChar) {
       case 'l':
-        Serial.println("Typed l");
         controller.turnOdom(90);
+        delay(50);
         break;
       case 'r':
         controller.turnOdom(-90);
+        delay(100);
         break;
       case 'f':
         controller.moveStraightOdom(180);
+        delay(50);
         break;
       case 'b':
         controller.moveStraightOdom(-180);
+        delay(50);
+        break;
+      case 'd':
+        controller.turnOdom(0.001);
         break;
       case 's':
         delay(1000000);
