@@ -73,6 +73,7 @@ void setup() {
 
 char receivedChar;
 bool newData = false;
+// Input sequence of movements
 char sequence[] = "rdfdrdfdfdldldfds";
 
 void loop() {

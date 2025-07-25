@@ -34,22 +34,22 @@ namespace mtrn3100 {
 class Controller {
 public:
   Controller(
-    DualEncoder*     en,
+    DualEncoder* en,
     EncoderOdometry* enOdom,
-    Motor*           leftM,
-    Motor*           rightM,
-    PIDController*   leftPid,
-    PIDController*   rightPid,
-    Lidar&           frontLidar   // only this one is ever enabled
-  )
-    : encoder(en)
-    , encoderOdometry(enOdom)
-    , leftMotor(leftM)
-    , rightMotor(rightM)
-    , leftPid(leftPid)
-    , rightPid(rightPid)
-    , lidar(frontLidar)
-    , lastPWM(0)
+    Motor* leftM,
+    Motor* rightM,
+    PIDController* leftPid,
+    PIDController* rightPid,
+    Lidar& frontLidar   // only this one is ever enabled
+  ) :
+    encoder(en),
+    encoderOdometry(enOdom),
+    leftMotor(leftM),
+    rightMotor(rightM),
+    leftPid(leftPid),
+    rightPid(rightPid),
+    lidar(frontLidar),
+    lastPWM(0)
   {}
 
     void moveStraightOdom(float input) {
@@ -91,15 +91,21 @@ public:
     /** Continuous P-control + ramp for front-facing wall follow */
     void followWallContinuous() {
         uint16_t dist = lidar.readMillimetres();          // only front sensor
-        int16_t  err  = int(dist) - int(TARGET_DIST);
+        int16_t err = int(dist) - int(TARGET_DIST);
         Serial.println(err); 
         int16_t cmd = 0;
-        if      (err >  TOLERANCE) cmd = int16_t(KP_LIDAR * err);
-        else if (err < -TOLERANCE) cmd = int16_t(KP_LIDAR * err);
-
+        // Move forward or backwards depending on tolerance
+        if (err > TOLERANCE) {
+          cmd = int16_t(KP_LIDAR * err);
+        } else if (err < -TOLERANCE) {
+          cmd = int16_t(KP_LIDAR * err);
+        }
         int16_t delta = cmd - lastPWM;
-        if      (delta >  RAMP_STEP) delta =  RAMP_STEP;
-        else if (delta < -RAMP_STEP) delta = -RAMP_STEP;
+        if (delta > RAMP_STEP) {
+          delta = RAMP_STEP;
+        } else if (delta < -RAMP_STEP) {
+          delta = -RAMP_STEP;
+        }
         lastPWM += delta;
 
         leftMotor->setPWM(constrain(lastPWM * LEFTADJ,  -MAXPWM, MAXPWM));
@@ -108,14 +114,14 @@ public:
 
 
 private:
-  DualEncoder*     encoder;
+  DualEncoder* encoder;
   EncoderOdometry* encoderOdometry;
-  Motor*           leftMotor;
-  Motor*           rightMotor;
-  PIDController*   leftPid;
-  PIDController*   rightPid;
-  Lidar&           lidar;
-  int16_t          lastPWM;
+  Motor* leftMotor;
+  Motor* rightMotor;
+  PIDController* leftPid;
+  PIDController* rightPid;
+  Lidar& lidar;
+  int16_t lastPWM;
 };
 
 }

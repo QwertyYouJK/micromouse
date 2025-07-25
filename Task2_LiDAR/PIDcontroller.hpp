@@ -41,7 +41,7 @@ public:
         derivative = (error - prev_error) / dt;
         float d_out = kd * derivative;
 
-        // COmbine
+        // Combine
         output = p_out + i_out + d_out;
 
         prev_error = error;

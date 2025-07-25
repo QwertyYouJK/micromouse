@@ -67,7 +67,7 @@ mtrn3100::Controller controller(&encoder, &encoder_odometry, &leftMotor, &rightM
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Wire.begin();
 
   // 1) Disable all three sensors

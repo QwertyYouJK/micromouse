@@ -32,14 +32,16 @@ public:
                Motor* rightM,
                PIDController* leftPid,
                PIDController* rightPid,
-               PIDController* turnPid)
-        : encoder(en)
-        , encoderOdometry(enOdom)
-        , leftMotor(leftM)
-        , rightMotor(rightM)
-        , leftPid(leftPid)
-        , rightPid(rightPid)
-        , turnPid(turnPid)
+               PIDController* turnPid
+            ): 
+    encoder(en),
+    encoderOdometry(enOdom),
+    leftMotor(leftM),
+    rightMotor(rightM),
+    leftPid(leftPid),
+    rightPid(rightPid),
+    lidar(frontLidar),
+    lastPWM(0)
     {}
 
     
