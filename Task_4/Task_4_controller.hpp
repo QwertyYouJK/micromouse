@@ -1,10 +1,10 @@
 #pragma once
 
 #include <Arduino.h>
-#include "motor.hpp"
-#include "DualEncoder.hpp"
-#include "EncoderOdometry.hpp"
-#include "PIDcontroller.hpp"
+#include "../Task_2_Code/motor.hpp"
+#include "../Task_2_Code/DualEncoder.hpp"
+#include "../Task_2_Code/EncoderOdometry.hpp"
+#include "../Task_2_Code/PIDcontroller.hpp"
 
 // motor constants
 #define MAXPWM 255 // max PWM
