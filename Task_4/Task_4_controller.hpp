@@ -1,10 +1,11 @@
 #pragma once
 
 #include <Arduino.h>
-#include "motor.hpp"
-#include "DualEncoder.hpp"
-#include "EncoderOdometry.hpp"
-#include "PIDcontroller.hpp"
+#include "Task_4_motor.hpp"
+#include "Task_4_DualEncoder.hpp"
+#include "Task_4_EncoderOdometry.hpp"
+#include "Task_4_PID_controller.hpp"
+#include "Task_4_lidar.hpp"
 
 // motor constants
 #define MAXPWM 255 // max PWM
@@ -19,60 +20,74 @@
 #define AXLEN 103 // Axle length
 
 // PID
-#define MBOUND 3 // error, millimetres
+#define MBOUND 2 // error, millimetres
 #define ABOUND 0.01 // error, radians
+
+// control constants
+#define TARGET_DIST 70 // mm desired gap
+#define TOLERANCE 2 // mm deadband 
+#define RAMP_STEP 12 // max PWM change per loop
+#define KP_LIDAR 0.8 
+
 
 namespace mtrn3100 {
 
 class Controller {
 public:
-    Controller(DualEncoder* en,
-               EncoderOdometry* enOdom,
-               Motor* leftM,
-               Motor* rightM,
-               PIDController* leftPid,
-               PIDController* rightPid,
-               PIDController* turnPid
-            ): 
+  Controller(
+    DualEncoder* en,
+    EncoderOdometry* enOdom,
+    Motor* leftM,
+    Motor* rightM,
+    PIDController* leftPid,
+    PIDController* rightPid,
+    PIDController* turnPid,
+    Lidar& frontLidar   // only this one is ever enabled
+  ) :
     encoder(en),
     encoderOdometry(enOdom),
     leftMotor(leftM),
     rightMotor(rightM),
     leftPid(leftPid),
     rightPid(rightPid),
+    turnPid(turnPid),
     lidar(frontLidar),
     lastPWM(0)
-    {}
+  {}
 
-    
-    // (in mm) +ve move forward, -ve backward
     void moveStraightOdom(float input) {
-        float startLeft = (WHRAD * encoder->getLeftRotation());
-        float startRight = (WHRAD * encoder->getRightRotation());
+      float target = input / WHRAD;
+      float startLeft = (WHRAD * encoder->getLeftRotation());
+      float startRight = (WHRAD * encoder->getRightRotation());
 
-        leftPid->newTarget(startLeft + input);
-        rightPid->newTarget(startRight + input);
+      leftPid->zeroTarget(startLeft, startLeft + input);
+      rightPid->zeroTarget(startRight, startRight + input);
 
-        while(1) {
-            float currLeft = (WHRAD * encoder->getLeftRotation());
-            float currRight = (WHRAD * encoder->getRightRotation());
+      Serial.print("moving straight: ");
+      Serial.print(input);
+      Serial.println(" mm.");
 
-            float outLeft = leftPid->compute(currLeft);
-            float outRight = rightPid->compute(currRight);
+      while(1) {
+        float currLeft = (WHRAD * encoder->getLeftRotation());
+        float currRight = (WHRAD * encoder->getRightRotation());
+        Serial.println(currLeft);
 
-            leftMotor->setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
-            rightMotor->setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
+        float outLeft = leftPid->compute(currLeft);
+        float outRight = rightPid->compute(currRight);
 
-            if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
-                leftPid->newTarget(0);
-                rightPid->newTarget(0);
-                break;
-            }
+        leftMotor->setPWM(constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM));
+        rightMotor->setPWM(constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+        if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
+          break;
         }
+      }
 
-        leftMotor->setPWM(MOTOFF);
-        rightMotor->setPWM(MOTOFF);
-        delay(10);      
+      leftMotor->setPWM(MOTOFF);
+      rightMotor->setPWM(MOTOFF);
+      
+      delay(10);
+      
     }
 
     // Positive means Counterclockwise, negative means CW
@@ -81,8 +96,6 @@ public:
         float startAngle = encoderOdometry->getH(); //rad
         float targetAngle = startAngle + (myAngleDegrees * PI / 180);
         turnPid->newTarget(targetAngle);
-        Serial.println(startAngle);
-        Serial.println(targetAngle);
         // should always be between -PI and +PI radians
         float flip = 1;
         if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
@@ -94,12 +107,10 @@ public:
             encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
             float currAngle = (encoderOdometry->getH());
             float turnPWM = turnPid->compute(currAngle);
-            Serial.print("current Angle: ");
-            Serial.println(currAngle);
+
             leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
             rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
-            Serial.print("error: ");
-            Serial.println(turnPid->getError());
+
             if (abs(turnPid->getError()) < ABOUND) {
                 turnPid->newTarget(0);
                 Serial.println("completed");
@@ -113,14 +124,41 @@ public:
         flip = 1;
     }
 
+    /** Continuous P-control + ramp for front-facing wall follow */
+    void followWallContinuous() {
+        uint16_t dist = lidar.readMillimetres();          // only front sensor
+        int16_t err = int(dist) - int(TARGET_DIST);
+        Serial.println(err); 
+        int16_t cmd = 0;
+        // Move forward or backwards depending on tolerance
+        if (err > TOLERANCE) {
+          cmd = int16_t(KP_LIDAR * err);
+        } else if (err < -TOLERANCE) {
+          cmd = int16_t(KP_LIDAR * err);
+        }
+        int16_t delta = cmd - lastPWM;
+        if (delta > RAMP_STEP) {
+          delta = RAMP_STEP;
+        } else if (delta < -RAMP_STEP) {
+          delta = -RAMP_STEP;
+        }
+        lastPWM += delta;
+
+        leftMotor->setPWM(constrain(lastPWM * LEFTADJ,  -MAXPWM, MAXPWM));
+        rightMotor->setPWM(constrain(lastPWM * RIGHTADJ, -MAXPWM, MAXPWM));
+    }
+
+
 private:
-    DualEncoder* encoder;
-    EncoderOdometry* encoderOdometry;
-    Motor* leftMotor;
-    Motor* rightMotor;
-    PIDController* leftPid;
-    PIDController* rightPid;
-    PIDController* turnPid;
+  DualEncoder* encoder;
+  EncoderOdometry* encoderOdometry;
+  Motor* leftMotor;
+  Motor* rightMotor;
+  PIDController* leftPid;
+  PIDController* rightPid;
+  PIDController* turnPid;
+  Lidar& lidar;
+  int16_t lastPWM;
 };
 
 }
