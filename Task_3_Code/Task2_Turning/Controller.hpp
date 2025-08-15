@@ -32,14 +32,15 @@ public:
                Motor* rightM,
                PIDController* leftPid,
                PIDController* rightPid,
-               PIDController* turnPid)
-        : encoder(en)
-        , encoderOdometry(enOdom)
-        , leftMotor(leftM)
-        , rightMotor(rightM)
-        , leftPid(leftPid)
-        , rightPid(rightPid)
-        , turnPid(turnPid)
+               PIDController* turnPid
+            ) : 
+        encoder(en),
+        encoderOdometry(enOdom),
+        leftMotor(leftM),
+        rightMotor(rightM),
+        leftPid(leftPid),
+        rightPid(rightPid),
+        turnPid(turnPid)
     {}
 
     
@@ -81,7 +82,7 @@ public:
         turnPid->newTarget(targetAngle);
         // should always be between -PI and +PI radians
         float flip = 1;
-        if (targetAngle <= -PI && targetAngle < 0) {
+        if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
             // right turn
             flip = -1;
         }
@@ -95,14 +96,16 @@ public:
             rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
 
             if (abs(turnPid->getError()) < ABOUND) {
-                break;
+                turnPid->newTarget(0);
                 Serial.println("completed");
+                break;
             }
         }
 
         leftMotor->setPWM(MOTOFF);
         rightMotor->setPWM(MOTOFF);
         delay(10);
+        flip = 1;
     }
 
 private:

@@ -4,7 +4,7 @@
 #include "PIDcontroller.hpp"
 #include "Controller.hpp"
 #include "IMUOdometry.hpp"
-#include "Keyboard.h"
+
 #include "Wire.h"
 #include <MPU6050_light.h>
 
@@ -43,9 +43,9 @@
 #define MBOUND 2 // error, millimetres
 
 // for turning:
-#define TKP 5000
-#define TKI 0
-#define TKD 0
+#define TKP 50
+#define TKI 1
+#define TKD 2
 #define ABOUND 0.01 // error, radians
 
 // define motor classes
@@ -62,46 +62,73 @@ mtrn3100::PIDController rightPid(MKP, MKI, MKD);
 
 mtrn3100::Controller controller(&encoder, &encoder_odometry, &leftMotor, &rightMotor, &leftPid, &rightPid, &turnPid);
 
+float original_yaw; // Get original yaw
+
 void setup() {
   Serial.begin(9600);
   // IMU setup
   Serial.println("Starting up!");
-  // Keyboard.begin();
+  Wire.begin();
+  mpu.begin();
+  mpu.calcOffsets(true, true);
   delay(1000);
   Serial.println("Done");
+
+  // 90 degree CW turn
+  controller.turnOdom(-90);
+  controller.turnOdom(0.001);
+  IMU.update();
+  original_yaw = IMU.get_yaw(); // Store original heading yaw
 }
 
-char receivedChar;
-bool newData = false;
-char sequence[] = "lfrffrfl";
-
 void loop() {
-  for (int i = 0; sequence[i] != '\0'; i++) {
-    char receivedChar = sequence[i];
-    Serial.print("Executing: ");
-    Serial.println(receivedChar);
-
-    switch(receivedChar) {
-      case 'l':
-        Serial.println("Typed l");
-        controller.turnOdom(90);
-        break;
-      case 'r':
-        controller.turnOdom(-90);
-        break;
-      case 'f':
-        controller.moveStraightOdom(180);
-        break;
-      case 'b':
-        controller.moveStraightOdom(-180);
-        break;
-      case 's':
-        delay(1000000);
-        break;
-    }
-  }
+  IMU.update();
+  float curr_yaw = IMU.get_yaw(); // get updated yaw
+  float difference = original_yaw - curr_yaw; 
+  Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
   
-
+  // Calc difference in yaws and move in the correct direction
+  if (abs(difference) >= 1) {
+      IMU.update();
+      if (difference < 0) {
+        leftMotor.setPWM(-30);
+        rightMotor.setPWM(-30);
+      } else {
+        leftMotor.setPWM(30);
+        rightMotor.setPWM(30);
+      }
+    } else {
+      leftMotor.setPWM(0);
+      rightMotor.setPWM(0);
+    }
   // small loop delay
   delay(50);
+
+  ////////////////////////// OLD CODE ////////////////////////// 
+  // IMU.update_xyz(mpu.getAccX(), mpu.getAccY(), mpu.getAccZ() - 1.0);
+
+  // Serial.print("original "); Serial.println(IMU.get_yaw());
+
+  // if (IMU.get_accZ() - 1 >= 0.35) {
+  //   float original_yaw = IMU.get_yaw(); // Get original yaw
+  //   Serial.print("lifted "); Serial.println(original_yaw);
+  //   // Task2_lifted = true;
+    
+  //   // wait for robot to come on ground
+  //   unsigned long startTime = millis();
+  //   while (millis() - startTime < 5000) {
+  //     // Serial.print("stored original "); Serial.println(original_yaw);
+  //     IMU.update();
+  //   }
+  //   // delay(5000);    
+    //   // Serial.print("curr  "); Serial.println(curr_yaw);
+    // if (difference < 0) {
+    //   difference -= 10;
+    // } else {
+    //   difference += 10;
+    // }
+
+    // controller.turnOdom(difference);
+    // controller.turnOdom(0.001);
+  // }
 }
