@@ -109,6 +109,15 @@ def bfs(graph, start_node_id, end_node_id):
     path.reverse()
     return path
 
+def diff_to_h(diff):
+    if diff == -9:
+        return 0
+    elif diff == 1:
+        return 1
+    elif diff == 9:
+        return 2
+    elif diff == -1:
+        return 3
 
 ### CODE ###
 
@@ -191,50 +200,37 @@ bfs_start_node = 74 # turn this into x,y cell? node 0 is (0,0) node 80 is (8,8)
 bfs_end_node = 77
 path = bfs(bfs_graph,bfs_start_node,bfs_end_node)
 
+if len(path) < 2:
+    print("No path")
+    exit()
 # Display the resulting image
-# print(f"Path: {path}")
-# draw_blue_path(img, bfs_graph, path)
+print(f"Path: {path}")
+draw_blue_path(img, bfs_graph, path)
+cv2.imwrite('path.jpg', img)
 # cv2.imshow('bfs_image', img)
 # cv2.waitKey(0)
 # cv2.destroyAllWindows()
 
-seq = ''
+seq = []
 left = False
 right = False
-for i in range(0, len(path)):
+
+prev_h = diff_to_h(path[1] - path[0])  # 0 = north, 1 = east, 2 = south, 3 = west
+curr_h = 0 
+seq.append('fd')
+for i in range(1, len(path) - 1):
     node = path[i]
     next_node = path[i+1]
     diff = next_node - node
-    if diff == -9 and right is True:
-        seq.append('lf')
-        right = False
-    elif diff == -9 and left is True:
-        seq.append('rf')
-        left = False
-    elif diff == -9:
-        seq.append('f')
-    
-    if diff == 1 and right is True:
-        seq.append('f')
-    elif diff == 1:
-        seq.append('rf')
+    curr_h = diff_to_h(diff)
+    if (curr_h - prev_h) == 0:
+        seq.append('fd')
+    elif (curr_h - prev_h) == 1 or (curr_h - prev_h) == -3:
+        seq.append('rfd')
+    elif (curr_h - prev_h) == -1 or (curr_h - prev_h) == 3:
+        seq.append('lfd')
+    prev_h = curr_h
 
-    if diff == -1 and left is True:
-        seq.append('f')
-    elif diff == -1:
-        seq.append('lf')
-
-print(seq)
-    
-
-
-# start
-# if number -9, then move forward
-    # turn right flag on? turn left and move forward (turn off right flag)
-    # turn left flag on? turn right and move forward (turn off left flag)
-
-# if number +1, turn right and move forward (turn right flag on)
-    # turn right flag on? just move foward
-
-# if number -1, turn left and move forward (turn left flag on)
-    # turn left flag on? just move forward
+seq.append('s')
+sequence = "".join(seq)
+print(sequence)
