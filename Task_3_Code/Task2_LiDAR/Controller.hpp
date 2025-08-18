@@ -87,6 +87,39 @@ public:
       
     }
 
+    // Positive means Counterclockwise, negative means CW
+    void turnOdom(float myAngleDegrees) {
+        encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+        float startAngle = encoderOdometry->getH(); //rad
+        float targetAngle = startAngle + (myAngleDegrees * PI / 180);
+        turnPid->newTarget(targetAngle);
+        // should always be between -PI and +PI radians
+        float flip = 1;
+        if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
+            // right turn
+            flip = -1;
+        }
+
+        while(1) {
+            encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+            float currAngle = (encoderOdometry->getH());
+            float turnPWM = turnPid->compute(currAngle);
+
+            leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
+            rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+            if (abs(turnPid->getError()) < ABOUND) {
+                turnPid->newTarget(0);
+                Serial.println("completed");
+                break;
+            }
+        }
+
+        leftMotor->setPWM(MOTOFF);
+        rightMotor->setPWM(MOTOFF);
+        delay(10);
+        flip = 1;
+    }
 
     /** Continuous P-control + ramp for front-facing wall follow */
     void followWallContinuous() {
@@ -120,6 +153,7 @@ private:
   Motor* rightMotor;
   PIDController* leftPid;
   PIDController* rightPid;
+  PIDController* turnPid;
   Lidar& lidar;
   int16_t lastPWM;
 };
