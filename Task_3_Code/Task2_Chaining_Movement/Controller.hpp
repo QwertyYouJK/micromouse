@@ -39,9 +39,9 @@ public:
     leftMotor(leftM),
     rightMotor(rightM),
     leftPid(leftPid),
-    rightPid(rightPid),
-    lidar(frontLidar),
-    lastPWM(0)
+    rightPid(rightPid)
+    // lidar(frontLidar),
+    // lastPWM(0)
     {}
 
     

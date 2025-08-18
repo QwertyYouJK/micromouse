@@ -9,9 +9,6 @@
 #include "Wire.h"
 #include <MPU6050_light.h>
 
-// unsigned long timer = 0;
-// MPU6050 mpu(Wire);
-
 #define EN_1_A 2  //These are the pins for the PCB encoder
 #define EN_1_B 7  //These are the pins for the PCB encoder
 #define EN_2_A 3  //These are the pins for the PCB encoder
@@ -73,19 +70,26 @@ mtrn3100::Lidar leftLidar(SENSOR_LEFT);
 mtrn3100::Lidar frontLidar (SENSOR_FRONT);
 mtrn3100::Lidar rightLidar(SENSOR_RIGHT);
 
-mtrn3100::Controller controller(&encoder, &encoder_odometry, &leftMotor, &rightMotor, &leftPid, &rightPid, &turnPid, frontLidar);
+mtrn3100::Controller controller(
+  &encoder, 
+  &encoder_odometry, 
+  &leftMotor, 
+  &rightMotor, 
+  &leftPid, 
+  &rightPid, 
+  &turnPid, 
+  frontLidar,
+  leftLidar,
+  rightLidar,
+  &IMU
+  );
 
-float original_yaw; // Get original yaw
-
+int original_yaw;
 
 void setup() {
   Serial.begin(9600);
 
   //////////////////// Lidar setup ////////////////////
-  // 1) Disable all three sensors
-  frontLidar.disable();
-  leftLidar.disable();
-  rightLidar.disable();
 
   // 2) Enable & init only the front sensor
   frontLidar.begin(ADDR_FRONT);
@@ -100,41 +104,11 @@ void setup() {
   mpu.calcOffsets(true, true);
   delay(1000);
   Serial.println("Done");
-
-  // // 90 degree CW turn
-  // controller.turnOdom(-90);
-  // controller.turnOdom(0.001);
   IMU.update();
   original_yaw = IMU.get_yaw(); // Store original heading yaw
 }
 
 void loop() {
-  //////////////////// Lidar Function ////////////////////
-    // Wall‐follow uses only the front sensor
-  controller.followWallContinuous();
-  delay(50);  // ~20 Hz
-
-  //////////////////// Turning Function ////////////////////
-  // IMU.update();
-  // float curr_yaw = IMU.get_yaw(); // get updated yaw
-  // float difference = original_yaw - curr_yaw; 
-  // Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
   
-  // // Calc difference in yaws and move in the correct direction
-  // if (abs(difference) >= 1) {
-  //     IMU.update();
-  //     if (difference < 0) {
-  //       leftMotor.setPWM(-30);
-  //       rightMotor.setPWM(-30);
-  //     } else {
-  //       leftMotor.setPWM(30);
-  //       rightMotor.setPWM(30);
-  //     }
-  //   } else {
-  //     leftMotor.setPWM(0);
-  //     rightMotor.setPWM(0);
-  //   }
-  // // small loop delay
-  // delay(50);
+  delay(50);
 }
-

@@ -6,6 +6,7 @@
 #include "Task_4_EncoderOdometry.hpp"
 #include "Task_4_PID_controller.hpp"
 #include "Task_4_lidar.hpp"
+#include "Task_4_IMUOdometry.hpp"
 
 // motor constants
 #define MAXPWM 255 // max PWM
@@ -42,7 +43,10 @@ public:
     PIDController* leftPid,
     PIDController* rightPid,
     PIDController* turnPid,
-    Lidar& frontLidar   // only this one is ever enabled
+    Lidar& frontLidar, 
+    Lidar& letftLidar,
+    Lidar& rightLidar,
+    IMUOdometry* IMU
   ) :
     encoder(en),
     encoderOdometry(enOdom),
@@ -51,7 +55,10 @@ public:
     leftPid(leftPid),
     rightPid(rightPid),
     turnPid(turnPid),
-    lidar(frontLidar),
+    frontLidar(frontLidar),
+    leftLidar(letftLidar),
+    rightLidar(rightLidar),
+    IMU(IMU),
     lastPWM(0)
   {}
 
@@ -126,7 +133,7 @@ public:
 
     /** Continuous P-control + ramp for front-facing wall follow */
     void followWallContinuous() {
-        uint16_t dist = lidar.readMillimetres();          // only front sensor
+        uint16_t dist = frontLidar.readMillimetres();          // only front sensor
         int16_t err = int(dist) - int(TARGET_DIST);
         Serial.println(err); 
         int16_t cmd = 0;
@@ -148,6 +155,63 @@ public:
         rightMotor->setPWM(constrain(lastPWM * RIGHTADJ, -MAXPWM, MAXPWM));
     }
 
+    void sequence_move(char sequence[]) { 
+      char receivedChar;
+      bool newData = false;
+      for (int i = 0; sequence[i] != '\0'; i++) {
+        char receivedChar = sequence[i];
+        Serial.print("Executing: ");
+        Serial.println(receivedChar);
+
+        switch(receivedChar) {
+          case 'l':
+            turnOdom(90);
+            delay(100);
+            break;
+          case 'r':
+            turnOdom(-90);
+            delay(100);
+            break;
+          case 'f':
+            moveStraightOdom(180);
+            delay(50);
+            break;
+          case 'b':
+            moveStraightOdom(-180);
+            delay(50);
+            break;
+          case 'd':
+            turnOdom(0.001);
+            break;
+          case 's':
+            leftMotor->setPWM(0);
+            rightMotor->setPWM(0);
+            break;
+        }
+      }
+    }
+
+    void turn_to_angle(int original_yaw) {
+      IMU->update();
+      float curr_yaw = IMU->get_yaw(); // get updated yaw
+      float difference = original_yaw - curr_yaw; 
+      Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
+      
+      // Calc difference in yaws and move in the correct direction
+      if (abs(difference) >= 1) {
+          IMU->update();
+          if (difference < 0) {
+            leftMotor->setPWM(-30);
+            rightMotor->setPWM(-30);
+          } else {
+            leftMotor->setPWM(30);
+            rightMotor->setPWM(30);
+          }
+        } else {
+          leftMotor->setPWM(0);
+          rightMotor->setPWM(0);
+        }
+      }
 
 private:
   DualEncoder* encoder;
@@ -157,7 +221,10 @@ private:
   PIDController* leftPid;
   PIDController* rightPid;
   PIDController* turnPid;
-  Lidar& lidar;
+  Lidar& frontLidar;
+  Lidar& leftLidar;
+  Lidar& rightLidar;
+  IMUOdometry* IMU;
   int16_t lastPWM;
 };
 
