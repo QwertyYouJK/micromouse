@@ -184,8 +184,8 @@ public:
             turnOdom(0.001);
             break;
           case 's':
-            leftMotor->setPWM(0);
-            rightMotor->setPWM(0);
+            leftMotor->setPWM(MOTOFF);
+            rightMotor->setPWM(MOTOFF);
             break;
         }
       }
@@ -208,8 +208,8 @@ public:
             rightMotor->setPWM(30);
           }
         } else {
-          leftMotor->setPWM(0);
-          rightMotor->setPWM(0);
+          leftMotor->setPWM(MOTOFF);
+          rightMotor->setPWM(MOTOFF);
         }
       }
 
