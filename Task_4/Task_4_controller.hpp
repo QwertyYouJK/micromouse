@@ -178,7 +178,7 @@ public:
     void turnOdom(float myAngleDegrees) {
         encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
         float startAngle = encoderOdometry->getH(); //rad
-        float targetAngle = startAngle + (myAngleDegrees * PI / 180);
+        float targetAngle = startAngle + (myAngleDegrees * (PI / 180));
         turnPid->newTarget(targetAngle);
         // should always be between -PI and +PI radians
         float flip = 1;
