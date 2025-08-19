@@ -119,8 +119,6 @@ void setup() {
 }
 
 void loop() {
-  // char sequence[] = readFileToCharArray("Test.txt")
-  // controller.moveStraightOdomAvg(180);
 
   delay(50);
 }

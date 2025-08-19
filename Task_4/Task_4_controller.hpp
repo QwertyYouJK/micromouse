@@ -69,7 +69,7 @@ public:
 
       // leftPid->zeroTarget(startLeft, startLeft + input);
       // rightPid->zeroTarget(startRight, startRight + input);
-      
+
       float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
       float targetRight = (WHRAD * encoder->getRightRotation()) + input;
 
@@ -232,7 +232,7 @@ public:
         rightMotor->setPWM(constrain(lastPWM * RIGHTADJ, -MAXPWM, MAXPWM));
     }
 
-    void sequence_move(char sequence[]) { 
+    void sequence_move(String sequence) { 
       char receivedChar;
       bool newData = false;
       for (int i = 0; sequence[i] != '\0'; i++) {
