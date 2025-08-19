@@ -28,7 +28,9 @@ public:
             dt = 1e-6; 
         }
 
-        error = setpoint - (input - zero_ref);
+        // error = setpoint - (input - zero_ref);
+        error = setpoint - input;
+
 
         // Proportional term
         float p_out = kp * error;
