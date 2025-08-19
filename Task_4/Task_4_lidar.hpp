@@ -16,7 +16,6 @@ public:
     digitalWrite(_xshut, LOW);  
   }
 
- 
   void disable() {
     digitalWrite(_xshut, LOW);
   }
