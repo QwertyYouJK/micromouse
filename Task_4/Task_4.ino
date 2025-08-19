@@ -5,6 +5,7 @@
 #include "Task_4_controller.hpp"
 #include "Task_4_LIDAR.hpp"
 #include "Task_4_IMUOdometry.hpp"
+#include "Task_4.1.1.hpp"
 
 #include "Wire.h"
 #include <MPU6050_light.h>
@@ -118,7 +119,8 @@ void setup() {
 }
 
 void loop() {
-
+  // char sequence[] = readFileToCharArray("Test.txt")
+  // controller.moveStraightOdomAvg(180);
 
   delay(50);
 }
