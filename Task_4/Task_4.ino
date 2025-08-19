@@ -88,17 +88,22 @@ int original_yaw;
 
 void setup() {
   Serial.begin(9600);
+  Serial.println("Starting up!");
 
   //////////////////// Lidar setup ////////////////////
-
-  // 2) Enable & init only the front sensor
   frontLidar.begin(ADDR_FRONT);
   Serial.print("Front LiDAR ready @0x");
   Serial.println(ADDR_FRONT, HEX);
 
-  //////////////////// Turning setup ////////////////////
-  // IMU setup
-  Serial.println("Starting up!");
+  leftLidar.begin(ADDR_LEFT);
+  Serial.print("Left LiDAR ready @0x");
+  Serial.println(ADDR_LEFT, HEX);
+
+  rightLidar.begin(ADDR_RIGHT);
+  Serial.print("Right LiDAR ready @0x");
+  Serial.println(ADDR_RIGHT, HEX);
+
+  //////////////////// IMU setup ////////////////////
   Wire.begin();
   mpu.begin();
   mpu.calcOffsets(true, true);
@@ -106,9 +111,14 @@ void setup() {
   Serial.println("Done");
   IMU.update();
   original_yaw = IMU.get_yaw(); // Store original heading yaw
+  Serial.print("IMU ready, facing: ");
+  Serial.println(original_yaw);
+
+  delay(100);
 }
 
 void loop() {
-  
+
+
   delay(50);
 }
