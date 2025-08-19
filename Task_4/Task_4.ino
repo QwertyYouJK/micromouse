@@ -119,6 +119,12 @@ void setup() {
 
 void loop() {
 
-
+  if (Serial.available()) {
+    String seq = Serial.readString();  // read whole incoming string
+    Serial.println("Got sequence: " + seq);
+    delay(5000);
+    // TODO: parse seq to control robot
+    controller.sequence_move(seq);
+  }
   delay(50);
 }
