@@ -133,8 +133,8 @@ public:
           // ---------------------------
           // LIDAR wall correction
           // ---------------------------
-          const float MIN_WALL_DIST = 60.0;   // mm
-          const float CORR_GAIN = 1;    // tuning factor
+          const float MIN_WALL_DIST = 40.0;   // mm
+          const float CORR_GAIN = 0.3;    // tuning factor
 
           uint16_t leftDist  = leftLidar.readMillimetres();
           uint16_t rightDist = rightLidar.readMillimetres();
@@ -250,7 +250,8 @@ public:
             delay(100);
             break;
           case 'f':
-            moveStraightOdom(180);
+            // moveStraightOdom(180);
+            moveStraightOdomAvg(180);
             delay(50);
             break;
           case 'b':
