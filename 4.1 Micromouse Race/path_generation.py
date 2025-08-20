@@ -157,7 +157,10 @@ maze_mask = cv2.inRange(HSV_img, lower, upper)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 maze_img = cv2.morphologyEx(maze_mask, cv2.MORPH_OPEN, kernel)
 
-cv2.imwrite('maze.jpg', maze_img)
+# Save the image
+script_dir = Path(__file__).parent
+output_path = script_dir / "maze.jpg"
+cv2.imwrite(str(output_path), maze_img)
 
 # Generate equally spaced coordinates
 x_coords = np.round(np.linspace(x0, x8, graph_n)).astype(int)
