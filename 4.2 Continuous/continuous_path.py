@@ -27,12 +27,12 @@ graph_n = 9
 # y_start, y_end = 23, 350
 
 # Graph variables
-prm_total_nodes_count = 69
+prm_total_nodes_count = 75
 prm_connection_radius = 100
 
 # start and end cell (0,0) ~ (8,8)
-start = (4,8)
-end = (5,8)
+start = (1,1)
+end = (3,7)
 
 #======================== CLASSES ===========================#
 class Node:
@@ -104,6 +104,8 @@ def draw_blue_path(image, graph, path):
         (x1,y1) = graph.nodes[node].get_point()
         (x2,y2) = graph.nodes[next_node].get_point()
         cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 3)
+        cv2.circle(image, (int(x1), int(y1)), 5, (0, 255, 0), -1)
+        cv2.putText(image, str(node), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
 def dijkstra(graph, start_id, end_id):    
     n = len(graph.nodes)
@@ -332,7 +334,7 @@ graph.add_node(-1, start_x, start_y) # start node
 for i, (x1, y1) in enumerate(out_node_pos):
     # Check if nodes is within radius of start node
     dist = math.sqrt((start_x - x1) ** 2  + (start_y - y1) ** 2)
-    if dist <= prm_connection_radius:
+    if dist <= 50:
         # Add edge if path is clear
         is_clear = path_clear(occ_map, x1, y1, start_x, start_y)
         if is_clear is True:
@@ -340,7 +342,7 @@ for i, (x1, y1) in enumerate(out_node_pos):
         
     # Check nearby nodes of end node
     dist = math.sqrt((goal_x - x1) ** 2  + (goal_y - y1) ** 2)
-    if dist > prm_connection_radius:
+    if dist > 50:
         continue
     
     is_clear = path_clear(occ_map, x1, y1, goal_x, goal_y)
@@ -371,36 +373,51 @@ output_path = script_dir / "path.jpg"
 cv2.imwrite(str(output_path), img)
 
 # TODO: redo sequence
-'''
-seq = []
-left = False
-right = False
 
-prev_h = diff_to_h(path[1] - path[0])  # 0 = north, 1 = east, 2 = south, 3 = west
-curr_h = 0 
-seq.append('fd')
-for i in range(1, len(path) - 1):
-    node = path[i]
-    next_node = path[i+1]
-    diff = next_node - node
-    curr_h = diff_to_h(diff)
-    if (curr_h - prev_h) == 0:
-        seq.append('fd')
-    elif (curr_h - prev_h) == 1 or (curr_h - prev_h) == -3:
-        seq.append('rfd')
-    elif (curr_h - prev_h) == -1 or (curr_h - prev_h) == 3:
-        seq.append('lfd')
-    prev_h = curr_h
+# Get points from path
+pts = []
+for nid in path:
+    pts.append(graph.nodes[nid].get_point())
 
-seq.append('s')
-sequence = "".join(seq)
-print(sequence)
+# print(pts)
+cmds = []
 
-script_dir = Path(__file__).parent
-task4_dir = script_dir.parent / "Task_4"
-out_path = task4_dir / "sequence.txt"
-with open(out_path, "w") as f:
-    f.write(sequence)
+# Face forward
+dx = pts[1][0] - pts[0][0]
+dy = pts[1][1] - pts[0][1]
+prev_yaw = math.atan2(-dy, dx)
+dist = math.hypot(dx, dy)
+cmds.append(("forward", dist))
 
-print(f"Sequence saved to {out_path.resolve()}")
-'''
+# --- remaining segments ---
+for i in range(1, len(pts)-1):
+    dx = pts[i+1][0] - pts[i][0]
+    dy = pts[i+1][1] - pts[i][1]
+    yaw = math.atan2(-dy, dx)
+    dtheta = yaw - prev_yaw
+    # print(f"yaw to next one is {yaw}, difference between prev yaw is {dtheta}")
+    deg = math.degrees(dtheta)
+    if (deg > 0.5):
+        cmds.append(("turn left", deg))
+    elif (deg < -180):
+        cmds.append(("turn left", abs(deg) - 180))
+    elif (deg < -0.5):
+        cmds.append(("turn right", abs(deg)))
+    
+    dist = math.hypot(dx, dy)
+    cmds.append(("forward", dist))
+
+    prev_yaw = yaw
+
+# print(cmds)
+
+tokens = []
+for op, val in cmds:
+    if op == "turn left":
+        tokens.append(f"T{-round(val)}")
+    elif op == "turn right":
+        tokens.append(f"T{round(val)}")
+    else:
+        tokens.append(f"F{round(val)}")
+seq = ";".join(tokens)
+print(seq)
