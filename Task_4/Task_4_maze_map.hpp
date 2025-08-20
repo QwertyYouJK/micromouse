@@ -91,26 +91,25 @@ public:
     }
   }
 
-  // - THIS IS THE SAME AS ADD_EDGE, I WILL CHANGE IT TO ADD_EDGE BUT I'M also not sure what its trying to do
-  // Set one side and mirror into the neighbour
-  void set_wall_from_distance(int row, int col, int abs_dir, int dist_mm) {
-    if (dist_mm == 0) return; // no reading
+  // // Set one side and mirror into the neighbour
+  // void set_wall_from_distance(int row, int col, int abs_dir, int dist_mm) {
+  //   if (dist_mm == 0) return; // no reading
     
-    int v;
-    if (dist_mm < WALL_THRESHOLD) {
-      v = wall_present;
-    } else {
-      v = wall_open;
-    }
+  //   int v;
+  //   if (dist_mm < WALL_THRESHOLD) {
+  //     v = wall_present;
+  //   } else {
+  //     v = wall_open;
+  //   }
 
-    grid[row][col].wall_dir[abs_dir] = v;
+  //   grid[row][col].wall_dir[abs_dir] = v;
 
-    int nr = row + row_step[abs_dir];
-    int nc = col + col_step[abs_dir];
-    if (in_bounds(nr, nc)) {
-      grid[nr][nc].wall_dir[opposite_dir(abs_dir)] = v;
-    }
-  }
+  //   int nr = row + row_step[abs_dir];
+  //   int nc = col + col_step[abs_dir];
+  //   if (in_bounds(nr, nc)) {
+  //     grid[nr][nc].wall_dir[opposite_dir(abs_dir)] = v;
+  //   }
+  // }
 
 
   // Safe access
