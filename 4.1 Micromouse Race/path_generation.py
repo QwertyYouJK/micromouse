@@ -122,7 +122,7 @@ def diff_to_h(diff):
         return 3
 
 #========================= CODE =========================#
-img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
+img_path = Path(__file__).parent / "RealMaze.jpg"   # same folder as script
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
@@ -131,8 +131,9 @@ width = img.shape[1] // 4
 height = img.shape[0] // 4
 img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
-# Crop the image
-img = img[60:492, 351:770]
+# Crop the image (Find the y1,y2 x1,x2)
+img = img[88:459, 349:714]
+#img = img[60:492, 351:770]
 
 HSV_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 160], np.uint8)
@@ -144,9 +145,11 @@ maze_img = cv2.morphologyEx(maze_mask, cv2.MORPH_OPEN, kernel)
 
 cv2.imwrite('maze.jpg', maze_img)
 
-# Define ranges
-x_start, x_end = 36, 385
-y_start, y_end = 30, 390
+# Define ranges (Find the 0,0 and 8,8)
+x_start, x_end = 21, 340
+y_start, y_end = 23, 350
+# x_start, x_end = 36, 385
+# y_start, y_end = 30, 390
 sections = 9
 
 # Generate equally spaced coordinates
@@ -199,8 +202,11 @@ last_num = bfs_n * bfs_n - 1
 # cv2.putText(img, str(last_num), (x_last, y_last), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
 # Breadth first search algo
-bfs_start_node = 74 # turn this into x,y cell? node 0 is (0,0) node 80 is (8,8)
-bfs_end_node = 77
+bfs_start = (0,2)
+bfs_end = (8,5)
+
+bfs_start_node = bfs_start[0] * bfs_n + bfs_start[1]
+bfs_end_node = bfs_end[0] * bfs_n + bfs_end[1]
 path = bfs(bfs_graph,bfs_start_node,bfs_end_node)
 
 if len(path) < 2:
@@ -248,15 +254,15 @@ print(sequence)
 
 # print(f"Sequence saved to {out_path.resolve()}")
 
-ser = serial.Serial('COM5', 9600) 
-time.sleep(2)  # wait for Arduino reset
+# ser = serial.Serial('COM5', 9600) 
+# time.sleep(2)  # wait for Arduino reset
 
-ser.write(sequence.encode())  # send string
+# ser.write(sequence.encode())  # send string
 
-# read back anything Arduino prints
-while True:
-    if ser.in_waiting > 0:
-        line = ser.readline().decode().strip()
-        print("Arduino:", line)
+# # read back anything Arduino prints
+# while True:
+#     if ser.in_waiting > 0:
+#         line = ser.readline().decode().strip()
+#         print("Arduino:", line)
 
 #flflffrffrflflfrfrflfrffrflfrfflflfrfrfffrflfrfs

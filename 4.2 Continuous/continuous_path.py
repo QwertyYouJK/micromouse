@@ -1,7 +1,39 @@
 import cv2
 from pathlib import Path
+import random
+import math
 import numpy as np
-from collections import deque
+
+#======================== VARIABLES ===========================#
+# Top left and bottom right of the maze to crop the image
+cropX1, cropX2 = (361, 767)
+cropY1, cropY2 = (69, 475)
+# cropX1, cropX2 = (349, 714)
+# cropY1, cropY2 = (88, 459)
+
+# occupancy map vars
+unsafe_kernel_size = 7
+unsafe_iterations = 3
+
+# Define 5x5 grid 
+tl = (2, 2) # top left of 5x5 grid
+br = (6, 6) # bottom right of 5x5 grid
+
+# (0,0) and (8,8) position, evenly spaced nodes will be placed
+x_start, x_end = 25, 377
+y_start, y_end = 25, 381
+sections = 9
+# x_start, x_end = 21, 340
+# y_start, y_end = 23, 350
+
+# Graph variables
+bfs_n = 9
+prm_total_nodes_count = 69
+prm_connection_radius = 100
+
+# start and end cell (0,0) ~ (8,8)
+start = (7,7)
+end = (5,0)
 
 #======================== CLASSES ===========================#
 class Node:
@@ -55,6 +87,7 @@ def draw_nodes_and_edges(image, graph):
     for node_id, node in graph.nodes.items():
         x, y = node.get_point()
         cv2.circle(image, (int(x), int(y)), 3, (0, 255, 0), -1)
+        cv2.putText(image, str(node_id), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
 
     for node1, nbrs in graph.edges.items():
         for node2 in nbrs:
@@ -62,7 +95,7 @@ def draw_nodes_and_edges(image, graph):
             (x2,y2) = graph.nodes[node2].get_point()
             #cv2.circle(image, (x1, y1), 3, (0, 255, 0), -1) # pure green
             cv2.line(image, (x1, y1), (x2, y2), (0, 125, 0), 1) # light green
-#             cv2.putText(image, str(node1), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
             
 
 def draw_blue_path(image, graph, path):
@@ -76,43 +109,73 @@ def draw_blue_path(image, graph, path):
         (x2,y2) = graph.nodes[next_node].get_point()
         cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
-def bfs(graph, start_node_id, end_node_id):
-    q = []
-    cost = [-1] * len(graph.nodes)
-    parent = [-1] * len(graph.nodes)
+def dijkstra(graph, start_id, end_id):    
+    n = len(graph.nodes)
+    p_q = []
+    cost = [-1] * n
+    parent = [-1] * n
+    # Set start_id and end_id as positive (last two indexes of list)
+    start = n + start_id
+    end = n + end_id
     
-    # insert start node as visited
-    q.append(start_node_id)
-    cost[start_node_id] = 0
+    # Insert start node as visited
+    p_q.append(start)
+    cost[start] = 0
     
-    # run search
-    while len(q) != 0:
-        x = q.pop(0)
+    # Run search
+    while len(p_q) != 0:
+        p_q.sort(key = lambda a : cost[a])
+        x = p_q.pop(0)
         
-        if x == end_node_id:
+        if x == end_id:
             break
         
-        for nbr in graph.edges[x]:
+        temp = x
+        # Change index back to original negative index
+        if temp == start:
+            temp = -1
+        elif temp == end:
+            temp = -2
+        
+        for nbr, w in graph.edges[temp].items():
+            
+            if nbr == -1:
+                nbr = start
+            elif nbr == -2:
+                nbr = end
+            
+            new_cost = cost[temp] + w
             if cost[nbr] == -1:
-                cost[nbr] = cost[x] + 1
-                q.append(nbr)
+                cost[nbr] = new_cost
                 parent[nbr] = x
+                p_q.append(nbr)
+            elif new_cost < cost[nbr]:
+                cost[nbr] = new_cost
+                parent[nbr] = x
+                p_q.append(nbr)
+        
+                
+    # Check if end is reachable
+    if cost[end] == -1:
+        print(f"No path between node {start_id} and node {end_id}")
+        return (0, 0)
     
-    # check if end is reachable
-    if cost[end_node_id] == -1:
-        print(f"No path between node {start_node_id} and node {end_node_id}")
-        return
-    
-    # obtain path
+    # Obtain path and cost
+    total_cost = cost[end]
     path = []
-    i = end_node_id
+    i = end
     while i != -1:
-        path.append(i)
-        i = parent[i]
+        temp = i
+        if temp == start:
+            temp = -1
+        elif temp == end:
+            temp = -2
+
+        path.append(temp)
+        i = parent[i]    
 
     path.reverse()
-    return path
-
+    return (path, total_cost)
 
 def diff_to_h(diff):
     if diff == -9:
@@ -129,7 +192,7 @@ def in_roi(node_id, n, row, col, size):
     return (row <= r < row + size) and (col <= c < col + size)
 
 #========================= CODE =========================#
-img_path = Path(__file__).parent / "RealMaze.jpg"   # same folder as script
+img_path = Path(__file__).parent / "Micromouse_continuous_1.jpg" 
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
@@ -137,13 +200,17 @@ if img is None:
 width = img.shape[1] // 4
 height = img.shape[0] // 4
 img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+script_dir = Path(__file__).parent
+output_path = script_dir / "shrunk_maze.jpg"
+cv2.imwrite(str(output_path), img)
 
 # Crop the image
-img = img[88:459, 349:714]
+img = img[cropY1:cropY2, cropX1:cropX2]
 
+# Maze mask
 HSV_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 130], np.uint8)
-upper = np.array([142, 40, 255], np.uint8)
+upper = np.array([151, 41, 255], np.uint8)
 maze_mask = cv2.inRange(HSV_img, lower, upper)
 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -154,15 +221,26 @@ script_dir = Path(__file__).parent
 output_path = script_dir / "maze.jpg"
 cv2.imwrite(str(output_path), maze_img)
 
-# Define ranges
-tl = (4, 2) # top left of 5x5 grid
-x_start, x_end = 21, 340
-y_start, y_end = 23, 350
-sections = 9
+# occupancy map
+kernel = np.ones((unsafe_kernel_size, unsafe_kernel_size), np.uint8)
+erosion = cv2.erode(maze_img, kernel, iterations = unsafe_iterations)
 
-# Generate equally spaced coordinates
-x_coords = np.round(np.linspace(x_start, x_end, sections)).astype(int)
-y_coords = np.round(np.linspace(y_start, y_end, sections)).astype(int)
+edges = cv2.bitwise_xor(maze_img, erosion)
+base_bgr = cv2.cvtColor(erosion, cv2.COLOR_GRAY2BGR)
+
+red_overlay = np.zeros_like(base_bgr)
+red_overlay[edges > 0] = (0, 0, 255)
+
+occ_map = cv2.bitwise_or(base_bgr, red_overlay)
+
+# Save resulting image
+script_dir = Path(__file__).parent
+output_path = script_dir / "occupancy.jpg"
+cv2.imwrite(str(output_path), occ_map)
+
+# Generate equally spaced nodes
+x_coords = np.round(np.linspace(x_start, x_end, bfs_n)).astype(int)
+y_coords = np.round(np.linspace(y_start, y_end, bfs_n)).astype(int)
 
 # Create all combinations
 bfs_pos = []
@@ -171,18 +249,16 @@ for y in y_coords:
         bfs_pos.append((x, y))
 
 # graph creation
-bfs_n = 9
 bfs_image = cv2.cvtColor(maze_img, cv2.COLOR_GRAY2BGR)
-bfs_graph = Graph()
+graph = Graph()
 
-# add nodes into bfs_graph
+# add outside grid nodes into graph
 for i, (x, y) in enumerate(bfs_pos):
-    print(f"added node {i} to the graph, its position is at {x},{y}")
-    bfs_graph.add_node(i, x, y)
+    # print(f"added node {i} to the graph, its position is at {x},{y}")
+    graph.add_node(i, x, y)
 
-# add edges into bfs_graph
+# add edges into graph
 for i, (x, y) in enumerate(bfs_pos):
-
     # check right node j = i+1
     j = i + 1
     if i % bfs_n != (bfs_n - 1):
@@ -190,7 +266,8 @@ for i, (x, y) in enumerate(bfs_pos):
         is_clear = path_clear(maze_img, x, y, x2, y2)
 
         if is_clear is True and (not in_roi(i, bfs_n, tl[0], tl[1], 5) or not in_roi(j, bfs_n, tl[0], tl[1], 5)):
-            bfs_graph.add_edge(i, j, 1)
+            dist = math.sqrt((x2 - x) ** 2  + (y2 - y) ** 2)
+            graph.add_edge(i, j, dist)
     
     # check down node
     j = i + bfs_n
@@ -200,30 +277,92 @@ for i, (x, y) in enumerate(bfs_pos):
     is_clear = path_clear(maze_img, x, y, x2, y2)
 
     if is_clear is True and (not in_roi(i, bfs_n, tl[0], tl[1], 5) or not in_roi(j, bfs_n, tl[0], tl[1], 5)):
-        bfs_graph.add_edge(i, j, 1)
+        dist = math.sqrt((x2 - x) ** 2  + (y2 - y) ** 2)
+        graph.add_edge(i, j, dist)
 
-# Display the image
-draw_nodes_and_edges(bfs_image, bfs_graph)
+# Generate random nodes within 5x5 grid
+prm_pos = []
+prm_ids = []
+tlX, tlY = bfs_pos[tl[0] * bfs_n + tl[1]]
+brX, brY = bfs_pos[br[0] * bfs_n + br[1]]
+while len(prm_pos) < prm_total_nodes_count:
+    x = random.randint(min(tlX, brX), max(tlX, brX))
+    y = random.randint(min(tlY, brY), max(tlY, brY))
+    
+    # Check if node is in free space and add node to graph
+    if path_clear(occ_map, x, y, x, y) is True:
+        prm_pos.append((x, y))
+        node_id = len(graph.nodes)
+        graph.add_node(node_id, x, y)
+        prm_ids.append(node_id)
+
+# Add edges in PRM
+for a, (x1, y1) in enumerate(prm_pos):
+    for b, (x2, y2) in enumerate(prm_pos):
+        if a == b:
+            continue
+        
+        # Check if nodes is within radius
+        dist = math.sqrt((x2 - x1) ** 2  + (y2 - y1) ** 2)
+        if dist > prm_connection_radius:
+            continue
+            
+        # Add edge if  path is clear
+        is_clear = path_clear(occ_map, x1, y1, x2, y2)
+        if is_clear is True:
+            n1 = prm_ids[a]
+            n2 = prm_ids[b]
+            graph.add_edge(n1, n2, dist)
+
+# Bridge PRM and outside grid
+grid_ids = list(range(bfs_n * bfs_n))
+
+for a, (x1, y1) in enumerate(prm_pos):
+    n1 = prm_ids[a]
+    for gid in grid_ids:
+        x2, y2 = graph.nodes[gid].get_point()
+        dist = math.sqrt((x2 - x1) ** 2  + (y2 - y1) ** 2)
+        if dist > prm_connection_radius:
+            continue
+        if path_clear(occ_map, x1, y1, x2, y2):
+            graph.add_edge(n1, gid, dist)
+
+
+# Add start (node id = -1) and end (node_id = -2) nodes
+start_x, start_y = bfs_pos[start[0] * bfs_n + start[1]]
+goal_x, goal_y = bfs_pos[end[0] * bfs_n + end[1]]
+graph.add_node(-2, goal_x, goal_y) # end node
+graph.add_node(-1, start_x, start_y) # start node
+
+# Add edges near start and end nodes
+for i, (x1, y1) in enumerate(bfs_pos):
+    # Check if nodes is within radius of start node
+    dist = math.sqrt((start_x - x1) ** 2  + (start_y - y1) ** 2)
+    if dist <= prm_connection_radius:
+        # Add edge if path is clear
+        is_clear = path_clear(occ_map, x1, y1, start_x, start_y)
+        if is_clear is True:
+            graph.add_edge(-1, i, dist)
+        
+    # Check nearby nodes of end node
+    dist = math.sqrt((goal_x - x1) ** 2  + (goal_y - y1) ** 2)
+    if dist > prm_connection_radius:
+        continue
+    
+    is_clear = path_clear(occ_map, x1, y1, goal_x, goal_y)
+    if is_clear is True:
+        graph.add_edge(-2, i, dist)
+
+
+# Dijkstra algo
+path, cost = dijkstra(graph, -1, -2)
+
+draw_nodes_and_edges(occ_map, graph)
 script_dir = Path(__file__).parent
 output_path = script_dir / "dots.jpg"
-cv2.imwrite(str(output_path), bfs_image)
+cv2.imwrite(str(output_path), occ_map)
 
-# Label first and last positions
-x_first, y_first = bfs_pos[0]
-x_last, y_last = bfs_pos[-1]
-last_num = bfs_n * bfs_n - 1
-# cv2.putText(img, '0', (x_first, y_first), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-# cv2.putText(img, str(last_num), (x_last, y_last), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-# Breadth first search algo
-bfs_start = (0,2)
-bfs_end = (8,5)
-
-bfs_start_node = bfs_start[0] * bfs_n + bfs_start[1]
-bfs_end_node = bfs_end[0] * bfs_n + bfs_end[1]
-path = bfs(bfs_graph,bfs_start_node,bfs_end_node)
-
-if path is None:
+if path == 0:
     print("No path")
     exit()
 if len(path) < 2:
@@ -231,15 +370,14 @@ if len(path) < 2:
     exit()
 # Display the resulting image
 print(f"Path: {path}")
-draw_blue_path(img, bfs_graph, path)
+draw_blue_path(img, graph, path)
 # Save the image
 script_dir = Path(__file__).parent
 output_path = script_dir / "path.jpg"
 cv2.imwrite(str(output_path), img)
-# cv2.imshow('bfs_image', img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
 
+# TODO: redo sequence
+'''
 seq = []
 left = False
 right = False
@@ -271,4 +409,4 @@ with open(out_path, "w") as f:
     f.write(sequence)
 
 print(f"Sequence saved to {out_path.resolve()}")
-
+'''
