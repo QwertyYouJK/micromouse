@@ -22,18 +22,17 @@ br = (6, 6) # bottom right of 5x5 grid
 # (0,0) and (8,8) position, evenly spaced nodes will be placed
 x_start, x_end = 25, 377
 y_start, y_end = 25, 381
-sections = 9
+graph_n = 9
 # x_start, x_end = 21, 340
 # y_start, y_end = 23, 350
 
 # Graph variables
-bfs_n = 9
 prm_total_nodes_count = 69
 prm_connection_radius = 100
 
 # start and end cell (0,0) ~ (8,8)
-start = (7,7)
-end = (5,0)
+start = (4,8)
+end = (5,8)
 
 #======================== CLASSES ===========================#
 class Node:
@@ -93,11 +92,8 @@ def draw_nodes_and_edges(image, graph):
         for node2 in nbrs:
             (x1,y1) = graph.nodes[node1].get_point()
             (x2,y2) = graph.nodes[node2].get_point()
-            #cv2.circle(image, (x1, y1), 3, (0, 255, 0), -1) # pure green
             cv2.line(image, (x1, y1), (x2, y2), (0, 125, 0), 1) # light green
             
-            
-
 def draw_blue_path(image, graph, path):
     # Draw path
     for i, node in enumerate(path):
@@ -239,52 +235,51 @@ output_path = script_dir / "occupancy.jpg"
 cv2.imwrite(str(output_path), occ_map)
 
 # Generate equally spaced nodes
-x_coords = np.round(np.linspace(x_start, x_end, bfs_n)).astype(int)
-y_coords = np.round(np.linspace(y_start, y_end, bfs_n)).astype(int)
+x_coords = np.round(np.linspace(x_start, x_end, graph_n)).astype(int)
+y_coords = np.round(np.linspace(y_start, y_end, graph_n)).astype(int)
 
 # Create all combinations
-bfs_pos = []
+out_node_pos = []
 for y in y_coords:
     for x in x_coords:
-        bfs_pos.append((x, y))
+        out_node_pos.append((x, y))
 
 # graph creation
-bfs_image = cv2.cvtColor(maze_img, cv2.COLOR_GRAY2BGR)
 graph = Graph()
 
 # add outside grid nodes into graph
-for i, (x, y) in enumerate(bfs_pos):
+for i, (x, y) in enumerate(out_node_pos):
     # print(f"added node {i} to the graph, its position is at {x},{y}")
     graph.add_node(i, x, y)
 
 # add edges into graph
-for i, (x, y) in enumerate(bfs_pos):
+for i, (x, y) in enumerate(out_node_pos):
     # check right node j = i+1
     j = i + 1
-    if i % bfs_n != (bfs_n - 1):
-        (x2, y2) = bfs_pos[j] # node on the right
+    if i % graph_n != (graph_n - 1):
+        (x2, y2) = out_node_pos[j] # node on the right
         is_clear = path_clear(maze_img, x, y, x2, y2)
 
-        if is_clear is True and (not in_roi(i, bfs_n, tl[0], tl[1], 5) or not in_roi(j, bfs_n, tl[0], tl[1], 5)):
+        if is_clear is True and (not in_roi(i, graph_n, tl[0], tl[1], 5) or not in_roi(j, graph_n, tl[0], tl[1], 5)):
             dist = math.sqrt((x2 - x) ** 2  + (y2 - y) ** 2)
             graph.add_edge(i, j, dist)
     
     # check down node
-    j = i + bfs_n
-    if j > (bfs_n * bfs_n - 1):
+    j = i + graph_n
+    if j > (graph_n * graph_n - 1):
         continue
-    (x2, y2) = bfs_pos[j] # node directly below
+    (x2, y2) = out_node_pos[j] # node directly below
     is_clear = path_clear(maze_img, x, y, x2, y2)
 
-    if is_clear is True and (not in_roi(i, bfs_n, tl[0], tl[1], 5) or not in_roi(j, bfs_n, tl[0], tl[1], 5)):
+    if is_clear is True and (not in_roi(i, graph_n, tl[0], tl[1], 5) or not in_roi(j, graph_n, tl[0], tl[1], 5)):
         dist = math.sqrt((x2 - x) ** 2  + (y2 - y) ** 2)
         graph.add_edge(i, j, dist)
 
 # Generate random nodes within 5x5 grid
 prm_pos = []
 prm_ids = []
-tlX, tlY = bfs_pos[tl[0] * bfs_n + tl[1]]
-brX, brY = bfs_pos[br[0] * bfs_n + br[1]]
+tlX, tlY = out_node_pos[tl[0] * graph_n + tl[1]]
+brX, brY = out_node_pos[br[0] * graph_n + br[1]]
 while len(prm_pos) < prm_total_nodes_count:
     x = random.randint(min(tlX, brX), max(tlX, brX))
     y = random.randint(min(tlY, brY), max(tlY, brY))
@@ -315,7 +310,7 @@ for a, (x1, y1) in enumerate(prm_pos):
             graph.add_edge(n1, n2, dist)
 
 # Bridge PRM and outside grid
-grid_ids = list(range(bfs_n * bfs_n))
+grid_ids = list(range(graph_n * graph_n))
 
 for a, (x1, y1) in enumerate(prm_pos):
     n1 = prm_ids[a]
@@ -327,15 +322,14 @@ for a, (x1, y1) in enumerate(prm_pos):
         if path_clear(occ_map, x1, y1, x2, y2):
             graph.add_edge(n1, gid, dist)
 
-
 # Add start (node id = -1) and end (node_id = -2) nodes
-start_x, start_y = bfs_pos[start[0] * bfs_n + start[1]]
-goal_x, goal_y = bfs_pos[end[0] * bfs_n + end[1]]
+start_x, start_y = out_node_pos[start[0] * graph_n + start[1]]
+goal_x, goal_y = out_node_pos[end[0] * graph_n + end[1]]
 graph.add_node(-2, goal_x, goal_y) # end node
 graph.add_node(-1, start_x, start_y) # start node
 
 # Add edges near start and end nodes
-for i, (x1, y1) in enumerate(bfs_pos):
+for i, (x1, y1) in enumerate(out_node_pos):
     # Check if nodes is within radius of start node
     dist = math.sqrt((start_x - x1) ** 2  + (start_y - y1) ** 2)
     if dist <= prm_connection_radius:
