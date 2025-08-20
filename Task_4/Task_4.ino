@@ -119,8 +119,7 @@ void setup() {
 }
 
 void loop() {
-  char sequence[] = "flfrfffs";
-  controller.sequence_move(sequence);
+
 
   delay(50);
 }
