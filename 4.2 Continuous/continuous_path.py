@@ -3,6 +3,7 @@ from pathlib import Path
 import random
 import math
 import numpy as np
+import serial, time
 
 #======================== VARIABLES ===========================#
 # Top left and bottom right of the maze to crop the image
@@ -27,12 +28,15 @@ graph_n = 9
 # y_start, y_end = 23, 350
 
 # Graph variables
+random.seed(69)
 prm_total_nodes_count = 75
 prm_connection_radius = 100
 
 # start and end cell (0,0) ~ (8,8)
 start = (1,1)
 end = (3,7)
+
+PX_TO_MM = 180.0 / 44.5
 
 #======================== CLASSES ===========================#
 class Node:
@@ -105,7 +109,7 @@ def draw_blue_path(image, graph, path):
         (x2,y2) = graph.nodes[next_node].get_point()
         cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 3)
         cv2.circle(image, (int(x1), int(y1)), 5, (0, 255, 0), -1)
-        cv2.putText(image, str(node), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(image, str(node), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 125, 0), 2)
 
 def dijkstra(graph, start_id, end_id):    
     n = len(graph.nodes)
@@ -387,7 +391,7 @@ dx = pts[1][0] - pts[0][0]
 dy = pts[1][1] - pts[0][1]
 prev_yaw = math.atan2(-dy, dx)
 dist = math.hypot(dx, dy)
-cmds.append(("forward", dist))
+cmds.append(("forward", dist * PX_TO_MM))
 
 # --- remaining segments ---
 for i in range(1, len(pts)-1):
@@ -395,17 +399,19 @@ for i in range(1, len(pts)-1):
     dy = pts[i+1][1] - pts[i][1]
     yaw = math.atan2(-dy, dx)
     dtheta = yaw - prev_yaw
-    # print(f"yaw to next one is {yaw}, difference between prev yaw is {dtheta}")
     deg = math.degrees(dtheta)
-    if (deg > 0.5):
+    if deg > 180:
+        cmds.append(("turn right", deg - 180))
+    elif deg > 0.5:
         cmds.append(("turn left", deg))
-    elif (deg < -180):
+    elif deg < -180:
         cmds.append(("turn left", abs(deg) - 180))
-    elif (deg < -0.5):
+    elif deg < -0.5:
         cmds.append(("turn right", abs(deg)))
     
+    
     dist = math.hypot(dx, dy)
-    cmds.append(("forward", dist))
+    cmds.append(("forward", dist * PX_TO_MM))
 
     prev_yaw = yaw
 
@@ -414,10 +420,44 @@ for i in range(1, len(pts)-1):
 tokens = []
 for op, val in cmds:
     if op == "turn left":
-        tokens.append(f"T{-round(val)}")
+        tokens.append(f"T{round(val)};")
     elif op == "turn right":
-        tokens.append(f"T{round(val)}")
+        tokens.append(f"T{-round(val)};")
     else:
-        tokens.append(f"F{round(val)}")
-seq = ";".join(tokens)
+        if round(val) == 178 or round(val) == 182:
+            tokens.append(f"F{round(val)};")
+        else:
+            tokens.append(f"f{round(val)};")
+seq = "".join(tokens)
 print(seq)
+
+# with serial.Serial('COM5', 9600, timeout=3) as ser:
+#     time.sleep(2)  # Arduino resets on connect
+#     ser.reset_input_buffer()
+
+#     for t in tokens:
+#         msg = (t + ';\n').encode('ascii')
+#         ser.write(msg)
+#         ser.flush()  # wait until host buffer flushed
+
+#         # wait for Arduino to say it has EXECUTED this token
+#         while True:
+#             line = ser.readline().decode(errors="ignore").strip()
+#             if line == "DONE":
+#                 break
+#             # optional: print debug lines from Arduino
+#             if line:
+#                 print("ARD:", line)
+
+#     # optional: tell Arduino no more commands
+#     ser.write(b"END;\n")
+# ser = serial.Serial('COM5', 9600) 
+# time.sleep(2)  # wait for Arduino reset
+
+# ser.write(seq.encode())  # send string
+
+# # read back anything Arduino prints
+# while True:
+#     if ser.in_waiting > 0:
+#         line = ser.readline().decode().strip()
+#         print("Arduino:", line)
