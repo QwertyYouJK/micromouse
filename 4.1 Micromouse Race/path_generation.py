@@ -1,8 +1,26 @@
 import cv2
+from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
+import serial, time
+#======================== VARIABLES ===========================#
+# Top left and bottom right of the maze to crop the image
+cropX1, cropX2 = (361, 767)
+cropY1, cropY2 = (69, 475)
+# cropX1, cropX2 = (349, 714)
+# cropY1, cropY2 = (88, 459)
 
-### CLASS ###
+# (0,0) and (8,8) position, evenly spaced nodes will be placed
+x0, x8 = 25, 377
+y0, y8 = 25, 381
+graph_n = 9
+# x0, x8 = 21, 340
+# y0, y8 = 23, 350
+
+# start and end cell (0,0) ~ (8,8)
+start = (2,0)
+end = (6,8)
+
+#======================== CLASSES ===========================#
 class Node:
     def __init__(self, node_id, x, y):
         self.id = node_id
@@ -42,7 +60,7 @@ class Graph:
     def get_edge_weight(self, node_id1, node_id2):
         return self.edges[node_id1][node_id2]
 
-### FUNCTIONS ###
+#======================== FUNCTIONS ===========================#
 def path_clear(image, x1, y1, x2, y2):
     temp = image.copy()
     cv2.line(temp, (x1, y1), (x2, y2), (255, 255, 255), 1)
@@ -58,7 +76,6 @@ def draw_nodes_and_edges(image, graph):
             cv2.circle(image, (x1, y1), 3, (0, 255, 0), -1) # pure green
             cv2.line(image, (x1, y1), (x2, y2), (0, 125, 0), 1) # light green
 #             cv2.putText(image, str(node1), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
 
 def draw_blue_path(image, graph, path):
     # Draw path
@@ -97,7 +114,7 @@ def bfs(graph, start_node_id, end_node_id):
     # check if end is reachable
     if cost[end_node_id] == -1:
         print(f"No path between node {start_node_id} and node {end_node_id}")
-        return
+        return {}
     
     # obtain path
     path = []
@@ -119,17 +136,18 @@ def diff_to_h(diff):
     elif diff == -1:
         return 3
 
-### CODE ###
-
-IMAGE_FILE = "MicromouseMazeCamera.jpg"
-img = cv2.imread(IMAGE_FILE)
+#========================= CODE =========================#
+img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
+img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+if img is None:
+    raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
 
 width = img.shape[1] // 4
 height = img.shape[0] // 4
 img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
 # Crop the image
-img = img[60:492, 351:770]
+img = img[cropY1:cropY2, cropX1:cropX2]
 
 HSV_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 160], np.uint8)
@@ -139,77 +157,75 @@ maze_mask = cv2.inRange(HSV_img, lower, upper)
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 maze_img = cv2.morphologyEx(maze_mask, cv2.MORPH_OPEN, kernel)
 
-cv2.imwrite('maze.jpg', maze_img)
-
-# Define ranges
-x_start, x_end = 36, 385
-y_start, y_end = 30, 390
-sections = 9
+# Save the image
+script_dir = Path(__file__).parent
+output_path = script_dir / "maze.jpg"
+cv2.imwrite(str(output_path), maze_img)
 
 # Generate equally spaced coordinates
-x_coords = np.round(np.linspace(x_start, x_end, sections)).astype(int)
-y_coords = np.round(np.linspace(y_start, y_end, sections)).astype(int)
+x_coords = np.round(np.linspace(x0, x8, graph_n)).astype(int)
+y_coords = np.round(np.linspace(y0, y8, graph_n)).astype(int)
 
 # Create all combinations
-bfs_pos = []
+node_pos = []
 for y in y_coords:
     for x in x_coords:
-        bfs_pos.append((x, y))
+        node_pos.append((x, y))
 
 # graph creation
-bfs_n = 9
-bfs_image = cv2.cvtColor(maze_img, cv2.COLOR_GRAY2BGR)
-bfs_graph = Graph()
+graph = Graph()
 
-# add nodes into bfs_graph
-for i, (x, y) in enumerate(bfs_pos):
-    bfs_graph.add_node(i, x, y)
+# add nodes into graph
+for i, (x, y) in enumerate(node_pos):
+    graph.add_node(i, x, y)
     
 
-# add edges into bfs_graph
-for i, (x, y) in enumerate(bfs_pos):
+# add edges into graph
+for i, (x, y) in enumerate(node_pos):
     # check right node
     next_node = i + 1
-    if (i % bfs_n != (bfs_n - 1)):
-        (x2, y2) = bfs_pos[next_node] # node on the right
+    if (i % graph_n != (graph_n - 1)):
+        (x2, y2) = node_pos[next_node] # node on the right
         is_clear = path_clear(maze_img, x, y, x2, y2)
         if is_clear is True:
-            bfs_graph.add_edge(i, i + 1, 1)
+            graph.add_edge(i, i + 1, 1)
     
     # check down node
-    next_node = i + bfs_n
-    if next_node > (bfs_n * bfs_n - 1):
+    next_node = i + graph_n
+    if next_node > (graph_n * graph_n - 1):
         continue
-    (x2, y2) = bfs_pos[next_node] # node directly below
+    (x2, y2) = node_pos[next_node] # node directly below
     is_clear = path_clear(maze_img, x, y, x2, y2)
     if is_clear is True:
-        bfs_graph.add_edge(i, i + bfs_n, 1)
+        graph.add_edge(i, i + graph_n, 1)
 
 # Display the image
-draw_nodes_and_edges(img, bfs_graph)
+draw_nodes_and_edges(img, graph)
+script_dir = Path(__file__).parent
+output_path = script_dir / "dots.jpg"
+cv2.imwrite(str(output_path), img)
 
 # Label first and last positions
-x_first, y_first = bfs_pos[0]
-x_last, y_last = bfs_pos[-1]
-last_num = bfs_n * bfs_n - 1
+x_first, y_first = node_pos[0]
+x_last, y_last = node_pos[-1]
+last_num = graph_n * graph_n - 1
 # cv2.putText(img, '0', (x_first, y_first), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 # cv2.putText(img, str(last_num), (x_last, y_last), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
 # Breadth first search algo
-bfs_start_node = 74 # turn this into x,y cell? node 0 is (0,0) node 80 is (8,8)
-bfs_end_node = 77
-path = bfs(bfs_graph,bfs_start_node,bfs_end_node)
+start_node = start[0] * graph_n + start[1]
+end_node = end[0] * graph_n + end[1]
+path = bfs(graph,start_node,end_node)
 
 if len(path) < 2:
     print("No path")
     exit()
 # Display the resulting image
 print(f"Path: {path}")
-draw_blue_path(img, bfs_graph, path)
-cv2.imwrite('path.jpg', img)
-# cv2.imshow('bfs_image', img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+draw_blue_path(img, graph, path)
+script_dir = Path(__file__).parent
+output_path = script_dir / "path.jpg"
+cv2.imwrite(str(output_path), img)
 
 seq = []
 left = False
@@ -217,20 +233,22 @@ right = False
 
 prev_h = diff_to_h(path[1] - path[0])  # 0 = north, 1 = east, 2 = south, 3 = west
 curr_h = 0 
-seq.append('fd')
+seq.append('f')
 for i in range(1, len(path) - 1):
     node = path[i]
     next_node = path[i+1]
     diff = next_node - node
     curr_h = diff_to_h(diff)
     if (curr_h - prev_h) == 0:
-        seq.append('fd')
+        seq.append('f')
     elif (curr_h - prev_h) == 1 or (curr_h - prev_h) == -3:
-        seq.append('rfd')
+        seq.append('rf')
     elif (curr_h - prev_h) == -1 or (curr_h - prev_h) == 3:
-        seq.append('lfd')
+        seq.append('lf')
     prev_h = curr_h
 
 seq.append('s')
 sequence = "".join(seq)
 print(sequence)
+
+#flflffrffrflflfrfrflfrffrflfrfflflfrfrfffrflfrfs

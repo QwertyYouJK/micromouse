@@ -76,12 +76,12 @@ public:
       float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
       float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
 
-      leftPid->newTarget(targetLeft);
-      rightPid->newTarget(targetRight);
+    leftPid->newTarget(targetLeft);
+    rightPid->newTarget(targetRight);
 
-      Serial.print("moving straight: ");
-      Serial.print(input);
-      Serial.println(" mm.");
+    Serial.print("moving straight: ");
+    Serial.print(input);
+    Serial.println(" mm.");
 
       while(1) {
         float currLeft = (WHRAD * encoder->getLeftRotation());
@@ -89,31 +89,31 @@ public:
         
         Serial.println(currLeft);
 
-        float outLeft = leftPid->compute(currLeft);
-        float outRight = rightPid->compute(currRight);
+      float outLeft = leftPid->compute(currLeft);
+      float outRight = rightPid->compute(currRight);
 
-        float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
-        float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
+      float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
+      float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-        leftMotor->setPWM(leftPWM);
-        rightMotor->setPWM(rightPWM);
+      leftMotor->setPWM(leftPWM);
+      rightMotor->setPWM(rightPWM);
 
-        if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
-          break;
-        }
+      if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
+        break;
       }
-      leftMotor->setPWM(MOTOFF);
-      rightMotor->setPWM(MOTOFF);
-      delay(10);   
     }
+    leftMotor->setPWM(MOTOFF);
+    rightMotor->setPWM(MOTOFF);
+    delay(10);   
+  }
 
-    void moveStraightOdomAvg(float input) {
-      // Use average encoder distance as the main forward measure
-      float startLeft = WHRAD * encoder->getLeftRotation();
-      float startRight = WHRAD * encoder->getRightRotation();
-      float startAvg = 0.5f * (startLeft + startRight);
+  void moveStraightOdomAvg(float input) {
+    // Use average encoder distance as the main forward measure
+    float startLeft = WHRAD * encoder->getLeftRotation();
+    float startRight = WHRAD * encoder->getRightRotation();
+    float startAvg = 0.5f * (startLeft + startRight);
 
-      float targetAvg = startAvg + input;
+    float targetAvg = startAvg + input;
 
       leftPid->newTarget(targetAvg);
       rightPid->newTarget(targetAvg);
@@ -128,9 +128,9 @@ public:
       Serial.print("init: ");
       Serial.println(init_heading);
 
-      Serial.print("moving straight: ");
-      Serial.print(input);
-      Serial.println(" mm.");
+    Serial.print("moving straight: ");
+    Serial.print(input);
+    Serial.println(" mm.");
 
       while (1) {
           IMU->update();
@@ -138,12 +138,12 @@ public:
           float currRight = WHRAD * encoder->getRightRotation();
           float currAvg = 0.5f * (currLeft + currRight);
 
-          // PID now tracks average forward displacement
-          float outLeft = leftPid->compute(currAvg);
-          float outRight = rightPid->compute(currAvg);
+        // PID now tracks average forward displacement
+        float outLeft = leftPid->compute(currAvg);
+        float outRight = rightPid->compute(currAvg);
 
-          float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
-          float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
+        float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
+        float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
           // ---------------------------
           // LIDAR wall correction
@@ -180,8 +180,8 @@ public:
               IMU->update();
           }
 
-          leftMotor->setPWM(leftPWM);
-          rightMotor->setPWM(rightPWM);
+        leftMotor->setPWM(leftPWM);
+        rightMotor->setPWM(rightPWM);
 
           // Exit if close enough to target
           if (fabs(targetAvg - currAvg) < MBOUND) {
@@ -232,20 +232,20 @@ public:
             flip = -1;
         }
 
-        while(1) {
-            encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
-            float currAngle = (encoderOdometry->getH());
-            float turnPWM = turnPid->compute(currAngle);
+      while(1) {
+          encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+          float currAngle = (encoderOdometry->getH());
+          float turnPWM = turnPid->compute(currAngle);
 
-            leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
-            rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
+          leftMotor->setPWM(constrain(-turnPWM * flip * LEFTADJ, -ACPTPWM, ACPTPWM));
+          rightMotor->setPWM(constrain(turnPWM * flip * RIGHTADJ, -ACPTPWM, ACPTPWM));
 
-            if (abs(turnPid->getError()) < ABOUND) {
-                turnPid->newTarget(0);
-                Serial.println("completed");
-                break;
-            }
-        }
+          if (abs(turnPid->getError()) < ABOUND) {
+              turnPid->newTarget(0);
+              Serial.println("completed");
+              break;
+          }
+      }
 
         leftMotor->setPWM(MOTOFF);
         rightMotor->setPWM(MOTOFF);
@@ -284,87 +284,101 @@ public:
 
     }
 
-    /** Continuous P-control + ramp for front-facing wall follow */
-    void followWallContinuous() {
-        uint16_t dist = frontLidar.readMillimetres();          // only front sensor
-        int16_t err = int(dist) - int(TARGET_DIST);
-        Serial.println(err); 
-        int16_t cmd = 0;
-        // Move forward or backwards depending on tolerance
-        if (err > TOLERANCE) {
-          cmd = int16_t(KP_LIDAR * err);
-        } else if (err < -TOLERANCE) {
-          cmd = int16_t(KP_LIDAR * err);
-        }
-        int16_t delta = cmd - lastPWM;
-        if (delta > RAMP_STEP) {
-          delta = RAMP_STEP;
-        } else if (delta < -RAMP_STEP) {
-          delta = -RAMP_STEP;
-        }
-        lastPWM += delta;
-
-        leftMotor->setPWM(constrain(lastPWM * LEFTADJ,  -MAXPWM, MAXPWM));
-        rightMotor->setPWM(constrain(lastPWM * RIGHTADJ, -MAXPWM, MAXPWM));
-    }
-
-    void sequence_move(char sequence[]) { 
-      char receivedChar;
-      bool newData = false;
-      for (int i = 0; sequence[i] != '\0'; i++) {
-        char receivedChar = sequence[i];
-        Serial.print("Executing: ");
-        Serial.println(receivedChar);
-
-        switch(receivedChar) {
-          case 'l':
-            turnOdom(90);
-            delay(100);
-            break;
-          case 'r':
-            turnOdom(-90);
-            delay(100);
-            break;
-          case 'f':
-            moveStraightOdom(180);
-            delay(50);
-            break;
-          case 'b':
-            moveStraightOdom(-180);
-            delay(50);
-            break;
-          case 'd':
-            turnOdom(0.001);
-            break;
-          case 's':
-            leftMotor->setPWM(MOTOFF);
-            rightMotor->setPWM(MOTOFF);
-            break;
-        }
+  /** Continuous P-control + ramp for front-facing wall follow */
+  void followWallContinuous() {
+      uint16_t dist = frontLidar.readMillimetres();          // only front sensor
+      int16_t err = int(dist) - int(TARGET_DIST);
+      Serial.println(err); 
+      int16_t cmd = 0;
+      // Move forward or backwards depending on tolerance
+      if (err > TOLERANCE) {
+        cmd = int16_t(KP_LIDAR * err);
+      } else if (err < -TOLERANCE) {
+        cmd = int16_t(KP_LIDAR * err);
       }
-    }
+      int16_t delta = cmd - lastPWM;
+      if (delta > RAMP_STEP) {
+        delta = RAMP_STEP;
+      } else if (delta < -RAMP_STEP) {
+        delta = -RAMP_STEP;
+      }
+      lastPWM += delta;
 
-    void turn_to_angle(int original_yaw) {
-      IMU->update();
-      float curr_yaw = IMU->get_yaw(); // get updated yaw
-      float difference = original_yaw - curr_yaw; 
-      Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
-      
-      // Calc difference in yaws and move in the correct direction
-      if (abs(difference) >= 1) {
-          IMU->update();
-          if (difference < 0) {
-            leftMotor->setPWM(-30);
-            rightMotor->setPWM(-30);
-          } else {
-            leftMotor->setPWM(30);
-            rightMotor->setPWM(30);
-          }
-        } else {
+      leftMotor->setPWM(constrain(lastPWM * LEFTADJ,  -MAXPWM, MAXPWM));
+      rightMotor->setPWM(constrain(lastPWM * RIGHTADJ, -MAXPWM, MAXPWM));
+  }
+
+  void sequence_move(String sequence) { 
+    char receivedChar;
+    bool newData = false;
+    for (int i = 0; sequence[i] != '\0'; i++) {
+      char receivedChar = sequence[i];
+      Serial.print("Executing: ");
+      Serial.println(receivedChar);
+
+      switch(receivedChar) {
+        case 'l':
+          turnOdom(90);
+          delay(100);
+          break;
+        case 'r':
+          turnOdom(-90);
+          delay(100);
+          break;
+        case 'f':
+          moveStraightOdomAvg(180);
+          delay(50);
+          break;
+        case 'b':
+          moveStraightOdomAvg(-180);
+          delay(50);
+          break;
+        case 'd':
+          turnOdom(0.001);
+          break;
+        case 's':
           leftMotor->setPWM(MOTOFF);
           rightMotor->setPWM(MOTOFF);
-        }
+          break;
       }
+    }
+  }
+
+  void turn_to_angle(int original_yaw) {
+    IMU->update();
+    float curr_yaw = IMU->get_yaw(); // get updated yaw
+    float difference = original_yaw - curr_yaw; 
+    Serial.print("curr  "); Serial.print(curr_yaw); Serial.print("orig  "); Serial.println(original_yaw);
+    
+    // Calc difference in yaws and move in the correct direction
+    if (abs(difference) >= 1) {
+        IMU->update();
+        if (difference < 0) {
+          leftMotor->setPWM(-30);
+          rightMotor->setPWM(-30);
+        } else {
+          leftMotor->setPWM(30);
+          rightMotor->setPWM(30);
+        }
+      } else {
+        leftMotor->setPWM(MOTOFF);
+        rightMotor->setPWM(MOTOFF);
+      }
+    }
+
+  void execute_sequence(char *seq) {
+    for (char *tok = strtok(seq, ";"); tok; tok = strtok(NULL, ";")) {
+      if (!*tok) continue;
+      char op = tok[0];
+      float val = atof(tok + 1);
+      if (op == 'F') moveStraightOdomAvg(val);
+      else if (op == 'f') moveStraightOdom(val);
+      else if (op == 'T') turnOdom(val);
+      else {
+        Serial.print("Unknown token: "); Serial.println(tok);
+      }
+    }
+  }
 
 private:
   DualEncoder* encoder;

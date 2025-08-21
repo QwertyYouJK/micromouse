@@ -91,6 +91,11 @@ mtrn3100::Controller controller(
   );
 
 int original_yaw;
+String token;
+
+String seq41 = "flfrffffffrflfrffffs";
+char seq42[] = 
+"F178;F178;F182;F182;F178;F178;T90;F178;T-90;F182;T90;F178;T90;F182;T-90;F178;F178;F178;F178;T90;F178;F178;T86;f325;T-37;f118;T-24;f290;T16;f166;T37;f252;T-78;F178;T-90;F178;T90;F182;T-90;F178;F178;F178;T-90;F182;T90;F178;T-90;F178;T90;F178;T-90;F178;F182;T-90;F178;T-90;F182;";
 
 void setup() {
   Serial.begin(9600);
@@ -120,34 +125,10 @@ void setup() {
   Serial.print("IMU ready, facing: ");
   Serial.println(original_yaw);
 
-  delay(100);
+  // controller.sequence_move(seq41);
+  controller.execute_sequence(seq42);
 }
 
 void loop() {
-  // char sequence[] = readFileToCharArray("Test.txt")
-  // controller.moveStraightOdomAvg(180);
-  //IMU.update();
-  controller.turnOdom(90);
-
-  delay(100);
-
-  controller.turnOdom(90);
-
-  delay(100);
-
-  controller.turnOdom(90);
-
-  delay(100);
-
-  controller.turnOdom(90);
-
-  delay(100);
-  
-  //IMU.update();
-  //controller.moveStraightOdom(180);
-
-  //controller.turnIMU(90);
-
-  delay (99999999999);
 
 }
