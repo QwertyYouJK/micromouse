@@ -1,3 +1,5 @@
+import os
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
 import cv2
 from pathlib import Path
 import numpy as np
@@ -137,6 +139,20 @@ def diff_to_h(diff):
         return 3
 
 #========================= CODE =========================#
+
+# cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
+# ret, img = cam.read()
+# cam.release() # release the camera
+
+# if not ret:
+#   print("error: couldn't take photo")
+#   exit(1)
+
+# # save image
+# script_dir = Path(__file__).parent
+# output_path = script_dir / "maze_img.jpg"
+# cv2.imwrite(str(output_path), img)
+
 img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
