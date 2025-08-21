@@ -15,8 +15,8 @@ cropY1, cropY2 = (69, 475)
 # cropY1, cropY2 = (88, 459)
 
 # occupancy map vars
-unsafe_kernel_size = 7
-unsafe_iterations = 3
+unsafe_kernel_size = 5
+unsafe_iterations = 5
 
 # Define 5x5 grid 
 tl = (2, 2) # top left of 5x5 grid
@@ -35,8 +35,8 @@ prm_total_nodes_count = 75
 prm_connection_radius = 100
 
 # start and end cell (0,0) ~ (8,8)
-start = (1,1)
-end = (3,7)
+start = (5,8)
+end = (1,4)
 
 PX_TO_MM = 180.0 / 44.5
 
