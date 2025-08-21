@@ -132,7 +132,7 @@ void loop() {
   const int goal_c = MAZE_COLS / 2;
   
   // Perform one autonomous mapping/navigation step
-  autonom_map(row, col, heading, goal_r, goal_c)
+  autonom_map(row, col, heading, goal_r, goal_c);
 
   Serial.println("Reached goal!");
   delay(10000);
@@ -151,7 +151,7 @@ void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) 
       row, col, heading, 
       frontLidar.readMillimetres(),
       leftLidar.readMillimetres(),
-      rightLidar.readMillimetres())      
+      rightLidar.readMillimetres()      
     );
     maze.add_visited_count();
 
