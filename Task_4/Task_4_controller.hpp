@@ -290,6 +290,26 @@ public:
           rightMotor->setPWM(MOTOFF);
         }
       }
+    
+    void move_direction(int dir) {
+      switch (dir) {
+        case 0: 
+          Serial.println("Moving straight"); 
+        case 1: 
+          Serial.println("Turning Right"); 
+          turnOdom(-90);
+          delay(100);  
+        case 2: 
+          Serial.println("Moving Back"); 
+          moveStraightOdomAvg(-180);
+          return;
+        case 3: 
+          Serial.println("Turning Left"); 
+          turnOdom(90);
+          delay(100);  
+      }
+      moveStraightOdomAvg(180);
+    }
 
 private:
   DualEncoder* encoder;

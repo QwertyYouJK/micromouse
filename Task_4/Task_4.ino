@@ -5,7 +5,7 @@
 #include "Task_4_controller.hpp"
 #include "Task_4_LIDAR.hpp"
 #include "Task_4_IMUOdometry.hpp"
-#include "Task_4.1.1.hpp"
+#include "Task_4_maze_map.hpp"
 
 #include "Wire.h"
 #include <MPU6050_light.h>
@@ -85,6 +85,9 @@ mtrn3100::Controller controller(
   &IMU
   );
 
+mtrn3100::maze_map maze;
+enum direction: int {north = 0, east = 1, south = 2, west = 3};
+
 int original_yaw;
 
 void setup() {
@@ -120,6 +123,59 @@ void setup() {
 
 void loop() {
 
+  // Initial robot state
+  int row = 0, col = 0;
+  int heading = north; 
 
-  delay(50);
+  // Define goal cell (e.g. center of maze)
+  const int goal_r = MAZE_ROWS / 2;
+  const int goal_c = MAZE_COLS / 2;
+  
+  // Perform one autonomous mapping/navigation step
+  autonom_map(row, col, heading, goal_r, goal_c)
+
+  Serial.println("Reached goal!");
+  delay(10000);
+}
+
+
+// Flood fill to create a graph to map the maze to the goal while tracking where it is
+void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) {
+  int row = start_r;
+  int col = start_c;
+
+  while (!(row == goal_r && col == goal_c)) {
+    // Update current cell with LiDAR readings
+    // (front_mm, left_mm, right_mm come from sensors each step)
+    maze.update(
+      row, col, heading, 
+      frontLidar.readMillimetres(),
+      leftLidar.readMillimetres(),
+      rightLidar.readMillimetres())      
+    );
+    maze.add_visited_count();
+
+    // Run flood fill from goal
+    maze.flood_fill(goal_r, goal_c);
+
+    // Pick best direction to move
+    int dir = maze.choose_best_dir(row, col);
+    if (dir == -1) {
+        Serial.println("Dead end, no path found!");
+        return;
+    }
+
+    // Move robot in chosen direction
+    controller.move_direction(dir);
+    row += row_step[dir];
+    col += col_step[dir];
+    heading = dir; // update robot’s heading (simplified)
+
+    Serial.print("Moving to cell: ");
+    Serial.print(row);
+    Serial.print(", ");
+    Serial.println(col);
+  }
+
+  Serial.println("Reached goal!");
 }
