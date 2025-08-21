@@ -45,6 +45,11 @@
 #define TKP 50
 #define TKI 1
 #define TKD 2
+
+#define TIKP 0
+#define TIKI 0
+#define TIKD 0
+
 #define ABOUND 0.01 // error, radians
 
 #define SENSOR_LEFT A0
@@ -78,7 +83,7 @@ mtrn3100::Controller controller(
   &rightMotor, 
   &leftPid, 
   &rightPid, 
-  &turnPid, 
+  &turnPid,
   frontLidar,
   leftLidar,
   rightLidar,
@@ -122,11 +127,10 @@ void loop() {
   // char sequence[] = readFileToCharArray("Test.txt")
   // controller.moveStraightOdomAvg(180);
   
-  controller.turnOdom(90);
+  controller.moveStraightOdomAvg(360);
 
-  delay (500);
+  //controller.turnIMU(90);
 
-  controller.turnOdom(-90);
+  delay (99999999999);
 
-  delay(500);
 }

@@ -23,6 +23,7 @@
 // PID
 #define MBOUND 3 // error, millimetres
 #define ABOUND 0.01 // error, radians
+#define IMU_ABOUND 1 // degrees, error
 
 // control constants
 #define TARGET_DIST 70 // mm desired gap
@@ -114,11 +115,22 @@ public:
       leftPid->newTarget(targetAvg);
       rightPid->newTarget(targetAvg);
 
+      // get initial angle to compare to the end for adjustments
+      IMU->update();
+      float init_heading = IMU->get_yaw();
+
+      // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+      // float init_heading = encoderOdometry->getH();
+
+      Serial.print("init: ");
+      Serial.println(init_heading);
+
       Serial.print("moving straight: ");
       Serial.print(input);
       Serial.println(" mm.");
 
       while (1) {
+          IMU->update();
           float currLeft = WHRAD * encoder->getLeftRotation();
           float currRight = WHRAD * encoder->getRightRotation();
           float currAvg = 0.5f * (currLeft + currRight);
@@ -134,15 +146,18 @@ public:
           // LIDAR wall correction
           // ---------------------------
           const float MIN_WALL_DIST = 60.0;   // mm
-          const float CORR_GAIN = 1;    // tuning factor
+          const float CORR_GAIN = 0.5;    // tuning factor
 
           uint16_t leftDist  = leftLidar.readMillimetres();
           uint16_t rightDist = rightLidar.readMillimetres();
           uint16_t frontDist = frontLidar.readMillimetres();
 
+          IMU->update();
+
           // Stop early if front wall too close
           if (frontDist < MIN_WALL_DIST && !frontLidar.timeoutOccurred()) {
               Serial.println("Front wall detected - stopping early.");
+              IMU->update();
               break;
           }
 
@@ -151,6 +166,7 @@ public:
               float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
               leftPWM -= corr;
               rightPWM -= corr;
+              IMU->update();
           }
 
           // If right wall close, push robot slightly left
@@ -158,6 +174,7 @@ public:
               float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
               leftPWM += corr;
               rightPWM += corr;
+              IMU->update();
           }
 
           leftMotor->setPWM(leftPWM);
@@ -165,10 +182,28 @@ public:
 
           // Exit if close enough to target
           if (fabs(targetAvg - currAvg) < MBOUND) {
+              IMU->update();
               break;
           }
       }
 
+      // check heading
+      delay(10);
+      
+      // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+      // float curr_heading = encoderOdometry->getH();
+      // float correction_angle = (init_heading - curr_heading) * (PI / 180);
+      IMU->update();
+      float curr_heading = IMU->get_yaw();
+      float correction_angle = (init_heading - curr_heading);
+
+      Serial.print(" curr: "); Serial.print(curr_heading);
+      Serial.print(" turned: "); Serial.println(correction_angle);
+
+      //turnOdom(correction_angle);
+      turnIMU(correction_angle);
+
+      delay(10);
       leftMotor->setPWM(MOTOFF);
       rightMotor->setPWM(MOTOFF);
       delay(10);
@@ -206,6 +241,37 @@ public:
         rightMotor->setPWM(MOTOFF);
         delay(10);
         flip = 1;
+    }
+
+    void turnIMU(float my_angle_degrees) {
+      IMU->update();
+      float init_angle = IMU->get_yaw();
+      float target_angle = init_angle + my_angle_degrees;
+
+      turnPid->newTarget(target_angle);
+
+      Serial.print("Turning with IMU to: ");
+      Serial.println(target_angle);
+
+      while(1) {
+        IMU->update();
+        float curr_angle = IMU->get_yaw();
+        float turn_pwm = turnPid->compute(curr_angle);
+
+        leftMotor->setPWM(constrain(-turn_pwm * LEFTADJ, -ACPTPWM, ACPTPWM));
+        rightMotor->setPWM(constrain(turn_pwm * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+
+        if (abs(turnPid->getError()) < IMU_ABOUND) {
+          Serial.println("IMU turn finsished");
+          break;
+        }
+      }
+
+      leftMotor->setPWM(MOTOFF);
+      rightMotor->setPWM(MOTOFF);
+      delay(10);
+
     }
 
     /** Continuous P-control + ramp for front-facing wall follow */
