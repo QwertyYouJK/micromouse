@@ -125,16 +125,15 @@ void loop() {
 
   // Initial robot state
   int row = 0, col = 0;
-  int heading = north; 
+  int heading = 0; 
 
   // Define goal cell (e.g. center of maze)
   const int goal_r = MAZE_ROWS / 2;
   const int goal_c = MAZE_COLS / 2;
   
   // Perform one autonomous mapping/navigation step
-  autonom_map(row, col, heading, goal_r, goal_c);
+  autonom_map(row, col, goal_r, goal_c, heading);
 
-  Serial.println("Reached goal!");
   delay(10000);
 }
 
@@ -153,7 +152,6 @@ void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) 
       leftLidar.readMillimetres(),
       rightLidar.readMillimetres()      
     );
-    maze.add_visited_count();
 
     // Run flood fill from goal
     maze.flood_fill(goal_r, goal_c);
