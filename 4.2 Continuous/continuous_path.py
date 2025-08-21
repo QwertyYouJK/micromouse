@@ -5,7 +5,7 @@ from pathlib import Path
 import random
 import math
 import numpy as np
-import serial, time
+# import serial, time
 
 #======================== VARIABLES ===========================#
 # Top left and bottom right of the maze to crop the image
