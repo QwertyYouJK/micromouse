@@ -140,27 +140,27 @@ def diff_to_h(diff):
 
 #========================= CODE =========================#
 
-cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
-ret, img = cam.read()
-cam.release() # release the camera
+# cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
+# ret, img = cam.read()
+# cam.release() # release the camera
 
-if not ret:
-  print("error: couldn't take photo")
-  exit(1)
+# if not ret:
+#   print("error: couldn't take photo")
+#   exit(1)
 
-# save image
-script_dir = Path(__file__).parent
-output_path = script_dir / "maze_img.jpg"
-cv2.imwrite(str(output_path), img)
+# # save image
+# script_dir = Path(__file__).parent
+# output_path = script_dir / "maze_img.jpg"
+# cv2.imwrite(str(output_path), img)
 
-# img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
-# img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
-# if img is None:
-#     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
+img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
+img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+if img is None:
+    raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
 
-# width = img.shape[1] // 4
-# height = img.shape[0] // 4
-# img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+width = img.shape[1] // 4
+height = img.shape[0] // 4
+img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
 # Crop the image
 img = img[cropY1:cropY2, cropX1:cropX2]
