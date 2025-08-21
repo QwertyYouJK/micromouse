@@ -31,6 +31,9 @@
 #define RAMP_STEP 12 // max PWM change per loop
 #define KP_LIDAR 0.8 
 
+#define MIN_WALL_DIST 55.0   // mm
+#define MIN_FRONT_WALL_DIST 70.0   // mm
+#define CORR_GAIN 0.45    // tuning factor
 
 namespace mtrn3100 {
 
@@ -65,23 +68,16 @@ public:
 
     void moveStraightOdom(float input) {
 
-      float dist_gain = 1.065;
-      // float target = input / WHRAD;
-      // float startLeft = (WHRAD * encoder->getLeftRotation());
-      // float startRight = (WHRAD * encoder->getRightRotation());
-
-      // leftPid->zeroTarget(startLeft, startLeft + input);
-      // rightPid->zeroTarget(startRight, startRight + input);
-      
+      float dist_gain = 1.065; 
       float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
       float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
 
-    leftPid->newTarget(targetLeft);
-    rightPid->newTarget(targetRight);
+      leftPid->newTarget(targetLeft);
+      rightPid->newTarget(targetRight);
 
-    Serial.print("moving straight: ");
-    Serial.print(input);
-    Serial.println(" mm.");
+      Serial.print("moving straight: ");
+      Serial.print(input);
+      Serial.println(" mm.");
 
       while(1) {
         float currLeft = (WHRAD * encoder->getLeftRotation());
@@ -89,23 +85,23 @@ public:
         
         Serial.println(currLeft);
 
-      float outLeft = leftPid->compute(currLeft);
-      float outRight = rightPid->compute(currRight);
+        float outLeft = leftPid->compute(currLeft);
+        float outRight = rightPid->compute(currRight);
 
-      float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
-      float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
+        float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
+        float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-      leftMotor->setPWM(leftPWM);
-      rightMotor->setPWM(rightPWM);
+        leftMotor->setPWM(leftPWM);
+        rightMotor->setPWM(rightPWM);
 
-      if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
-        break;
+        if (abs(leftPid->getError()) < MBOUND && abs(rightPid->getError()) < MBOUND) {
+          break;
+        }
       }
+      leftMotor->setPWM(MOTOFF);
+      rightMotor->setPWM(MOTOFF);
+      delay(10);   
     }
-    leftMotor->setPWM(MOTOFF);
-    rightMotor->setPWM(MOTOFF);
-    delay(10);   
-  }
 
   void moveStraightOdomAvg(float input) {
     // Use average encoder distance as the main forward measure
@@ -122,64 +118,56 @@ public:
     Serial.print(input);
     Serial.println(" mm.");
 
-      while (1) {
-          float currLeft = WHRAD * encoder->getLeftRotation();
-          float currRight = WHRAD * encoder->getRightRotation();
-          float currAvg = 0.5f * (currLeft + currRight);
+    while (1) {
+      float currLeft = WHRAD * encoder->getLeftRotation();
+      float currRight = WHRAD * encoder->getRightRotation();
+      float currAvg = 0.5f * (currLeft + currRight);
 
-        // PID now tracks average forward displacement
-        float outLeft = leftPid->compute(currAvg);
-        float outRight = rightPid->compute(currAvg);
+      // PID now tracks average forward displacement
+      float outLeft = leftPid->compute(currAvg);
+      float outRight = rightPid->compute(currAvg);
 
-        float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
-        float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
+      float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
+      float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-          // ---------------------------
-          // LIDAR wall correction
-          // ---------------------------
-          const float MIN_WALL_DIST = 60.0;   // mm
-          const float CORR_GAIN = 0.5;    // tuning factor
+      uint16_t leftDist  = leftLidar.readMillimetres();
+      uint16_t rightDist = rightLidar.readMillimetres();
+      uint16_t frontDist = frontLidar.readMillimetres();
 
-          uint16_t leftDist  = leftLidar.readMillimetres();
-          uint16_t rightDist = rightLidar.readMillimetres();
-          uint16_t frontDist = frontLidar.readMillimetres();
-
-          // Stop early if front wall too close
-          if (frontDist < MIN_WALL_DIST && !frontLidar.timeoutOccurred()) {
-              Serial.println("Front wall detected - stopping early.");
-              break;
-          }
-
-          // If left wall close, push robot slightly right
-          if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
-              float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
-              leftPWM -= corr;
-              rightPWM -= corr;
-          }
-
-          // If right wall close, push robot slightly left
-          if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
-              float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
-              leftPWM += corr;
-              rightPWM += corr;
-          }
-
-        leftMotor->setPWM(leftPWM);
-        rightMotor->setPWM(rightPWM);
-
-          // Exit if close enough to target
-          if (fabs(targetAvg - currAvg) < MBOUND) {
-              break;
-          }
+      // Stop early if front wall too close
+      if (frontDist < MIN_FRONT_WALL_DIST && !frontLidar.timeoutOccurred()) {
+        Serial.println("Front wall detected - stopping early.");
+        break;
       }
 
-      delay(10);
-      leftMotor->setPWM(MOTOFF);
-      rightMotor->setPWM(MOTOFF);
-      delay(10);
-    }
+      // If left wall close, push robot slightly right
+      if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
+        float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
+        leftPWM -= corr;
+        rightPWM -= corr;
+      }
 
-void moveCorrectionStraightOdomAvg(float input) {
+      // If right wall close, push robot slightly left
+      if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
+        float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
+        leftPWM += corr;
+        rightPWM += corr;
+      }
+
+      leftMotor->setPWM(leftPWM);
+      rightMotor->setPWM(rightPWM);
+
+      // Exit if close enough to target
+      if (fabs(targetAvg - currAvg) < MBOUND) {
+        break;
+      }
+    }
+    leftMotor->setPWM(MOTOFF);
+    rightMotor->setPWM(MOTOFF);
+    delay(10);
+  }
+
+  void moveCorrectionStraightOdomAvg(float input) {
     // Use average encoder distance as the main forward measure
     float startLeft = WHRAD * encoder->getLeftRotation();
     float startRight = WHRAD * encoder->getRightRotation();
@@ -200,15 +188,15 @@ void moveCorrectionStraightOdomAvg(float input) {
       Serial.print("init: ");
       Serial.println(init_heading);
 
-    Serial.print("moving straight: ");
-    Serial.print(input);
-    Serial.println(" mm.");
+      Serial.print("moving straight: ");
+      Serial.print(input);
+      Serial.println(" mm.");
 
       while (1) {
-          IMU->update();
-          float currLeft = WHRAD * encoder->getLeftRotation();
-          float currRight = WHRAD * encoder->getRightRotation();
-          float currAvg = 0.5f * (currLeft + currRight);
+        IMU->update();
+        float currLeft = WHRAD * encoder->getLeftRotation();
+        float currRight = WHRAD * encoder->getRightRotation();
+        float currAvg = 0.5f * (currLeft + currRight);
 
         // PID now tracks average forward displacement
         float outLeft = leftPid->compute(currAvg);
@@ -217,49 +205,43 @@ void moveCorrectionStraightOdomAvg(float input) {
         float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
         float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-          // ---------------------------
-          // LIDAR wall correction
-          // ---------------------------
-          const float MIN_WALL_DIST = 65.0;   // mm
-          const float CORR_GAIN = 0.5;    // tuning factor
+        uint16_t leftDist  = leftLidar.readMillimetres();
+        uint16_t rightDist = rightLidar.readMillimetres();
+        uint16_t frontDist = frontLidar.readMillimetres();
 
-          uint16_t leftDist  = leftLidar.readMillimetres();
-          uint16_t rightDist = rightLidar.readMillimetres();
-          uint16_t frontDist = frontLidar.readMillimetres();
+        IMU->update();
 
+        // Stop early if front wall too close
+        if (frontDist < MIN_FRONT_WALL_DIST && !frontLidar.timeoutOccurred()) {
+            Serial.println("Front wall detected - stopping early.");
+            IMU->update();
+            break;
+        }
+
+        // If left wall close, push robot slightly right
+        if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
+          float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
+          leftPWM -= corr;
+          rightPWM -= corr;
           IMU->update();
+        }
 
-          // Stop early if front wall too close
-          if (frontDist < MIN_WALL_DIST && !frontLidar.timeoutOccurred()) {
-              Serial.println("Front wall detected - stopping early.");
-              IMU->update();
-              break;
-          }
-
-          // If left wall close, push robot slightly right
-          if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
-              float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
-              leftPWM -= corr;
-              rightPWM -= corr;
-              IMU->update();
-          }
-
-          // If right wall close, push robot slightly left
-          if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
-              float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
-              leftPWM += corr;
-              rightPWM += corr;
-              IMU->update();
-          }
+        // If right wall close, push robot slightly left
+        if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
+          float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
+          leftPWM += corr;
+          rightPWM += corr;
+          IMU->update();
+        }
 
         leftMotor->setPWM(leftPWM);
         rightMotor->setPWM(rightPWM);
 
-          // Exit if close enough to target
-          if (fabs(targetAvg - currAvg) < MBOUND) {
-              IMU->update();
-              break;
-          }
+        // Exit if close enough to target
+        if (fabs(targetAvg - currAvg) < MBOUND) {
+          IMU->update();
+          break;
+        }
       }
 
       // check heading
@@ -451,7 +433,7 @@ void moveCorrectionStraightOdomAvg(float input) {
       }
     }
   }
-
+  
 private:
   DualEncoder* encoder;
   EncoderOdometry* encoderOdometry;

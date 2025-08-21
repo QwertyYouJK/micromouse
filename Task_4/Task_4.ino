@@ -127,9 +127,14 @@ void setup() {
   Serial.println(original_yaw);
 
   // controller.sequence_move(seq41);
-  controller.execute_sequence(seq42);
+  // controller.execute_sequence(seq42);
 }
 
 void loop() {
-
+  // Serial.print("leftDist  = ");
+  // Serial.print(leftLidar.readMillimetres());
+  // Serial.print(" rightDist  = ");
+  // Serial.print(rightLidar.readMillimetres());
+  // Serial.print(" frontDist  = ");
+  // Serial.println(frontLidar.readMillimetres());
 }
