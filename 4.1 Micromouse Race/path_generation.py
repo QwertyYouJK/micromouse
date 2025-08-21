@@ -251,23 +251,4 @@ seq.append('s')
 sequence = "".join(seq)
 print(sequence)
 
-# script_dir = Path(__file__).parent
-# task4_dir = script_dir.parent / "Task_4"
-# out_path = task4_dir / "sequence.txt"
-# with open(out_path, "w") as f:
-#     f.write(sequence)
-
-# print(f"Sequence saved to {out_path.resolve()}")
-
-# ser = serial.Serial('COM5', 9600) 
-# time.sleep(2)  # wait for Arduino reset
-
-# ser.write(sequence.encode())  # send string
-
-# # read back anything Arduino prints
-# while True:
-#     if ser.in_waiting > 0:
-#         line = ser.readline().decode().strip()
-#         print("Arduino:", line)
-
 #flflffrffrflflfrfrflfrffrflfrfflflfrfrfffrflfrfs
