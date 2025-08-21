@@ -21,7 +21,7 @@
 #define AXLEN 103 // Axle length
 
 // PID
-#define MBOUND 3 // error, millimetres
+#define MBOUND 4 // error, millimetres
 #define ABOUND 0.01 // error, radians
 #define IMU_ABOUND 1 // degrees, error
 
@@ -148,7 +148,7 @@ public:
           // ---------------------------
           // LIDAR wall correction
           // ---------------------------
-          const float MIN_WALL_DIST = 60.0;   // mm
+          const float MIN_WALL_DIST = 65.0;   // mm
           const float CORR_GAIN = 0.5;    // tuning factor
 
           uint16_t leftDist  = leftLidar.readMillimetres();
@@ -372,7 +372,7 @@ public:
       char op = tok[0];
       float val = atof(tok + 1);
       if (op == 'F') moveStraightOdomAvg(val);
-      else if (op == 'f') moveStraightOdom(val);
+      else if (op == 'f') moveStraightOdomAvg(val);
       else if (op == 'T') turnOdom(val);
       else {
         Serial.print("Unknown token: "); Serial.println(tok);
