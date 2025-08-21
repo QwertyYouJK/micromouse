@@ -23,6 +23,7 @@
 // PID
 #define MBOUND 3 // error, millimetres
 #define ABOUND 0.01 // error, radians
+#define IMU_ABOUND 1 // degrees, error
 
 // control constants
 #define TARGET_DIST 70 // mm desired gap
@@ -62,16 +63,18 @@ public:
     lastPWM(0)
   {}
 
-  void moveStraightOdom(float input) {
-    // float target = input / WHRAD;
-    // float startLeft = (WHRAD * encoder->getLeftRotation());
-    // float startRight = (WHRAD * encoder->getRightRotation());
+    void moveStraightOdom(float input) {
 
-    // leftPid->zeroTarget(startLeft, startLeft + input);
-    // rightPid->zeroTarget(startRight, startRight + input);
+      float dist_gain = 1.065;
+      // float target = input / WHRAD;
+      // float startLeft = (WHRAD * encoder->getLeftRotation());
+      // float startRight = (WHRAD * encoder->getRightRotation());
 
-    float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
-    float targetRight = (WHRAD * encoder->getRightRotation()) + input;
+      // leftPid->zeroTarget(startLeft, startLeft + input);
+      // rightPid->zeroTarget(startRight, startRight + input);
+      
+      float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
+      float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
 
     leftPid->newTarget(targetLeft);
     rightPid->newTarget(targetRight);
@@ -80,10 +83,11 @@ public:
     Serial.print(input);
     Serial.println(" mm.");
 
-    while(1) {
-      float currLeft = (WHRAD * encoder->getLeftRotation());
-      float currRight = (WHRAD * encoder->getRightRotation());
-      // Serial.println(currLeft);
+      while(1) {
+        float currLeft = (WHRAD * encoder->getLeftRotation());
+        float currRight = (WHRAD * encoder->getRightRotation());
+        
+        Serial.println(currLeft);
 
       float outLeft = leftPid->compute(currLeft);
       float outRight = rightPid->compute(currRight);
@@ -111,17 +115,28 @@ public:
 
     float targetAvg = startAvg + input;
 
-    leftPid->newTarget(targetAvg);
-    rightPid->newTarget(targetAvg);
+      leftPid->newTarget(targetAvg);
+      rightPid->newTarget(targetAvg);
+
+      // get initial angle to compare to the end for adjustments
+      IMU->update();
+      float init_heading = IMU->get_yaw();
+
+      // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+      // float init_heading = encoderOdometry->getH();
+
+      Serial.print("init: ");
+      Serial.println(init_heading);
 
     Serial.print("moving straight: ");
     Serial.print(input);
     Serial.println(" mm.");
 
-    while (1) {
-        float currLeft = WHRAD * encoder->getLeftRotation();
-        float currRight = WHRAD * encoder->getRightRotation();
-        float currAvg = 0.5f * (currLeft + currRight);
+      while (1) {
+          IMU->update();
+          float currLeft = WHRAD * encoder->getLeftRotation();
+          float currRight = WHRAD * encoder->getRightRotation();
+          float currAvg = 0.5f * (currLeft + currRight);
 
         // PID now tracks average forward displacement
         float outLeft = leftPid->compute(currAvg);
@@ -130,62 +145,92 @@ public:
         float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
         float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-        // ---------------------------
-        // LIDAR wall correction
-        // ---------------------------
-        const float MIN_WALL_DIST = 60.0;   // mm
-        const float CORR_GAIN = 1;    // tuning factor
+          // ---------------------------
+          // LIDAR wall correction
+          // ---------------------------
+          const float MIN_WALL_DIST = 60.0;   // mm
+          const float CORR_GAIN = 0.5;    // tuning factor
 
-        uint16_t leftDist  = leftLidar.readMillimetres();
-        uint16_t rightDist = rightLidar.readMillimetres();
-        uint16_t frontDist = frontLidar.readMillimetres();
+          uint16_t leftDist  = leftLidar.readMillimetres();
+          uint16_t rightDist = rightLidar.readMillimetres();
+          uint16_t frontDist = frontLidar.readMillimetres();
 
-        // Stop early if front wall too close
-        if (frontDist < MIN_WALL_DIST && !frontLidar.timeoutOccurred()) {
-            Serial.println("Front wall detected - stopping early.");
-            break;
-        }
+          IMU->update();
 
-        // If left wall close, push robot slightly right
-        if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
-            float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
-            leftPWM -= corr;
-            rightPWM -= corr;
-        }
+          // Stop early if front wall too close
+          if (frontDist < MIN_WALL_DIST && !frontLidar.timeoutOccurred()) {
+              Serial.println("Front wall detected - stopping early.");
+              IMU->update();
+              break;
+          }
 
-        // If right wall close, push robot slightly left
-        if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
-            float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
-            leftPWM += corr;
-            rightPWM += corr;
-        }
+          // If left wall close, push robot slightly right
+          if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
+              float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
+              leftPWM -= corr;
+              rightPWM -= corr;
+              IMU->update();
+          }
+
+          // If right wall close, push robot slightly left
+          if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
+              float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
+              leftPWM += corr;
+              rightPWM += corr;
+              IMU->update();
+          }
 
         leftMotor->setPWM(leftPWM);
         rightMotor->setPWM(rightPWM);
 
-        // Exit if close enough to target
-        if (fabs(targetAvg - currAvg) < MBOUND) {
-            break;
-        }
+          // Exit if close enough to target
+          if (fabs(targetAvg - currAvg) < MBOUND) {
+              IMU->update();
+              break;
+          }
+      }
+
+      // check heading
+      delay(10);
+      
+      // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+      // float curr_heading = encoderOdometry->getH();
+      // float correction_angle = (init_heading - curr_heading) * (PI / 180);
+      IMU->update();
+      float curr_heading = IMU->get_yaw();
+      float correction_angle = (init_heading - curr_heading);
+
+      Serial.print(" curr: "); Serial.print(curr_heading);
+      Serial.print(" turned: "); Serial.println(correction_angle);
+
+      IMU->update();
+      //turnOdom(correction_angle);
+      turnIMU(correction_angle);
+      delay(10);
+
+      IMU->update();
+      float snap_to_angle = round(correction_angle / 90.0 ) * 90.0;
+      turnIMU(snap_to_angle);
+
+      delay(10);
+      leftMotor->setPWM(MOTOFF);
+      rightMotor->setPWM(MOTOFF);
+      delay(10);
     }
 
-    leftMotor->setPWM(MOTOFF);
-    rightMotor->setPWM(MOTOFF);
-    delay(10);
-  }
-
-  // Positive means Counterclockwise (left turn), negative means CW (right turn)
-  void turnOdom(float myAngleDegrees) {
-      encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
-      float startAngle = encoderOdometry->getH(); //rad
-      float targetAngle = startAngle + (myAngleDegrees * PI / 180);
-      turnPid->newTarget(targetAngle);
-      // should always be between -PI and +PI radians
-      float flip = 1;
-      if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
-          // right turn
-          flip = -1;
-      }
+    // Positive means Counterclockwise, negative means CW
+    void turnOdom(float myAngleDegrees) {
+        float turn_gain = 1.032;
+        encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+        float startAngle = encoderOdometry->getH(); //rad
+        float targetAngle = (startAngle + (myAngleDegrees * (PI / 180)) * turn_gain);
+        turnPid->newTarget(targetAngle);
+        // should always be between -PI and +PI radians
+        float flip = 1;
+        if (myAngleDegrees <= -180 && myAngleDegrees < 0) {
+            // right turn
+            flip = -1;
+        }
 
       while(1) {
           encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
@@ -202,11 +247,42 @@ public:
           }
       }
 
+        leftMotor->setPWM(MOTOFF);
+        rightMotor->setPWM(MOTOFF);
+        delay(10);
+        flip = 1;
+    }
+
+    void turnIMU(float my_angle_degrees) {
+      IMU->update();
+      float init_angle = IMU->get_yaw();
+      float target_angle = init_angle + my_angle_degrees;
+
+      turnPid->newTarget(target_angle);
+
+      Serial.print("Turning with IMU to: ");
+      Serial.println(target_angle);
+
+      while(1) {
+        IMU->update();
+        float curr_angle = IMU->get_yaw();
+        float turn_pwm = turnPid->compute(curr_angle);
+
+        leftMotor->setPWM(constrain(-turn_pwm * LEFTADJ, -ACPTPWM, ACPTPWM));
+        rightMotor->setPWM(constrain(turn_pwm * RIGHTADJ, -ACPTPWM, ACPTPWM));
+
+
+        if (abs(turnPid->getError()) < IMU_ABOUND) {
+          Serial.println("IMU turn finsished");
+          break;
+        }
+      }
+
       leftMotor->setPWM(MOTOFF);
       rightMotor->setPWM(MOTOFF);
       delay(10);
-      flip = 1;
-  }
+
+    }
 
   /** Continuous P-control + ramp for front-facing wall follow */
   void followWallContinuous() {
