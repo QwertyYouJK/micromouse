@@ -18,7 +18,7 @@ namespace mtrn3100 {
 class maze_cell {
 public:
   // Default constructor
-  maze_cell() : row(0), col(0), ff_dist(FLOOD_FILL_INF), visited(false) {
+  maze_cell() : ff_dist(FLOOD_FILL_INF), visited(false) {
     for (int i = 0; i < 4; i++) {
       wall_dir[i] = wall_unknown;
     }
