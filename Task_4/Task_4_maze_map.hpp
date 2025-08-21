@@ -18,7 +18,7 @@ namespace mtrn3100 {
 class maze_cell {
 public:
   // Default constructor
-  maze_cell() : row(0), col(0), ff_dist(FLOOD_FILL_INF), visited(false) {
+  maze_cell() : ff_dist(FLOOD_FILL_INF), visited(false) {
     for (int i = 0; i < 4; i++) {
       wall_dir[i] = wall_unknown;
     }
@@ -54,25 +54,12 @@ public:
   int getFFDist() const { return ff_dist; }
   void setFFDist(int dist) { ff_dist = dist; }
 
-  // // Mark current cell visited and set walls from LiDAR (front/left/right).
-  // // Call ONCE when the robot is centred in a cell.
-  // void update(int heading, int front_mm, int left_mm, int right_mm) {
-  //   if (!isVisited()) {
-  //     setVisited(true);
-  //   }
-
-  //   // Convert robot-relative to absolute directions, then set walls
-  //   setWallState(rel_to_abs(heading, north), front_mm); 
-  //   setWallState(rel_to_abs(heading, east), right_mm); 
-  //   setWallState(rel_to_abs(heading, west), left_mm);  
-  // }
-
   // Directions and wall states
   enum direction: int {north = 0, east = 1, south = 2, west = 3};
   enum wall_state: int {wall_unknown = -1, wall_open = 0, wall_present = 1};
 
 private:
-  int row;         
+  int row;
   int col;          
   bool visited;     
   int ff_dist;
