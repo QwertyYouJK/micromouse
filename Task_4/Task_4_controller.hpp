@@ -64,6 +64,8 @@ public:
   {}
 
     void moveStraightOdom(float input) {
+
+      float dist_gain = 1.065;
       // float target = input / WHRAD;
       // float startLeft = (WHRAD * encoder->getLeftRotation());
       // float startRight = (WHRAD * encoder->getRightRotation());
@@ -71,8 +73,8 @@ public:
       // leftPid->zeroTarget(startLeft, startLeft + input);
       // rightPid->zeroTarget(startRight, startRight + input);
       
-      float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
-      float targetRight = (WHRAD * encoder->getRightRotation()) + input;
+      float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
+      float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
 
       leftPid->newTarget(targetLeft);
       rightPid->newTarget(targetRight);
@@ -84,7 +86,8 @@ public:
       while(1) {
         float currLeft = (WHRAD * encoder->getLeftRotation());
         float currRight = (WHRAD * encoder->getRightRotation());
-        // Serial.println(currLeft);
+        
+        Serial.println(currLeft);
 
         float outLeft = leftPid->compute(currLeft);
         float outRight = rightPid->compute(currRight);
@@ -200,8 +203,14 @@ public:
       Serial.print(" curr: "); Serial.print(curr_heading);
       Serial.print(" turned: "); Serial.println(correction_angle);
 
+      IMU->update();
       //turnOdom(correction_angle);
       turnIMU(correction_angle);
+      delay(10);
+
+      IMU->update();
+      float snap_to_angle = round(correction_angle / 90.0 ) * 90.0;
+      turnIMU(snap_to_angle);
 
       delay(10);
       leftMotor->setPWM(MOTOFF);
@@ -211,9 +220,10 @@ public:
 
     // Positive means Counterclockwise, negative means CW
     void turnOdom(float myAngleDegrees) {
+        float turn_gain = 1.032;
         encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
         float startAngle = encoderOdometry->getH(); //rad
-        float targetAngle = startAngle + (myAngleDegrees * (PI / 180));
+        float targetAngle = (startAngle + (myAngleDegrees * (PI / 180)) * turn_gain);
         turnPid->newTarget(targetAngle);
         // should always be between -PI and +PI radians
         float flip = 1;
