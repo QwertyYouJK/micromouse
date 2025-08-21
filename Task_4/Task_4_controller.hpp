@@ -306,10 +306,10 @@ public:
           turnOdom(90);
           delay(100);  
           moveStraightOdomAvg(180);
-        case 4: 
-          Serial.println("Moving Back"); 
-          moveStraightOdomAvg(-180);
-          return;
+        // case 4: 
+        //   Serial.println("Moving Back"); 
+        //   moveStraightOdomAvg(-180);
+        //   return;
       }
     }
 

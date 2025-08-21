@@ -6,6 +6,9 @@
 #include "Task_4_LIDAR.hpp"
 #include "Task_4_IMUOdometry.hpp"
 #include "Task_4_maze_map.hpp"
+#include "Task_4_oled.hpp"
+#include "Task_4_oled_mapping.hpp"
+
 
 #include "Wire.h"
 #include <MPU6050_light.h>
@@ -55,6 +58,8 @@
 #define ADDR_LEFT  0x54
 #define ADDR_RIGHT 0x55
 
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
+
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
 mtrn3100::Motor rightMotor(MOTRPWM, MOTRDIR);
@@ -86,13 +91,25 @@ mtrn3100::Controller controller(
   );
 
 mtrn3100::maze_map maze;
-enum direction: int {north = 0, east = 1, west = 2, south = 3};
+enum direction : int { north = 0, east = 1, south = 2, west = 3 };
 
 int original_yaw;
+
+// Initial robot state
+int start_row = 0, start_col = 0;
+int heading = 0; 
+
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting up!");
+
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+  u8x8.clear();
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  u8x8.drawString(0, 0, "BallerinaArduina");
+
 
   //////////////////// Lidar setup ////////////////////
   frontLidar.begin(ADDR_FRONT);
@@ -119,17 +136,20 @@ void setup() {
   Serial.println(original_yaw);
 
   delay(100);
+
+  mapping::commitCellAndRedraw(u8x8, maze, frontLidar, leftLidar, rightLidar,
+                               start_row, start_col, heading);
+
+  Serial.print(F("Start pose r=")); Serial.print(start_row);
+  Serial.print(F(" c="));           Serial.print(start_col);
+  Serial.print(F(" heading="));     Serial.println(heading);
 }
 
 void loop() {
 
-  // Initial robot state
-  int start_row = 0, start_col = 0;
-  int heading = 0; 
-
   // Define goal cell 
-  const int goal_r = 1;
-  const int goal_c = 1;
+  const int goal_r = 2;
+  const int goal_c = 2;
   
   // Perform one autonomous mapping/navigation step
   autonom_map(start_row, start_col, goal_r, goal_c, heading);
@@ -144,36 +164,37 @@ void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) 
   int col = start_c;
 
   while (!(row == goal_r && col == goal_c)) {
-    // Update current cell with LiDAR readings
-    // (front_mm, left_mm, right_mm come from sensors each step)
-    maze.update(
-      row, col, heading, 
-      frontLidar.readMillimetres(),
-      leftLidar.readMillimetres(),
-      rightLidar.readMillimetres()      
-    );
 
-    // Run flood fill from goal
-    maze.flood_fill(goal_r, goal_c);
-    
-    Serial.println("Flood fill finished, moving...");
-    // Pick best direction to move
-    int dir = maze.choose_best_dir(row, col);
+    // Update map with sensors for the *current cell*
+    maze.update(row, col, heading,
+                frontLidar.readMillimetres(),
+                leftLidar.readMillimetres(),
+                rightLidar.readMillimetres());
+
+    // // Optional if you still keep flood fill for other logic
+    // maze.flood_fill(goal_r, goal_c);
+
+    // Choose a step that is strictly closer than the current cell
+    int dir = maze.choose_best_dir(row, col, goal_r, goal_c);
     if (dir == -1) {
-        Serial.println("Dead end, no path found!");
-        return;
+      // No strictly-closer neighbour → either at goal or boxed in
+      break;
     }
 
-    // Move robot in chosen direction
+    Serial.print("Moving from: ");
+    Serial.print(row);
+    Serial.print(" ");
+    Serial.print(col);
+    Serial.print("Heading ");
+    Serial.println(heading);
+
+    // Command the move (ideally blocking until cell center reached)
     controller.move_direction(dir);
+
+    // Update discrete pose
     row += row_step[dir];
     col += col_step[dir];
-    heading = dir; // update robot’s heading (simplified)
-
-    Serial.print("Moving to cell: ");
-    Serial.print(row);
-    Serial.print(", ");
-    Serial.println(col);
+    heading = dir;  // absolute headings must match N,E,S,W = 0..3
   }
 
   Serial.println("Reached goal!");

@@ -55,8 +55,10 @@ public:
   int getFFDist() const { return ff_dist; }
   void setFFDist(int dist) { ff_dist = dist; }
 
+
+
   // Directions and wall states
-  enum direction: int {north = 0, east = 1, west = 2, south = 3,};
+  enum direction: int { north = 0, east = 1, south = 2, west = 3 };
   enum wall_state: int {wall_unknown = -1, wall_open = 0, wall_present = 1};
 
 private:
@@ -78,6 +80,19 @@ public:
     }
   }
 
+  // Returns existing cell pointer or nullptr
+  maze_cell* get_cell(int r, int c) const {
+    if (!in_bounds(r, c)) return nullptr;
+    return grid[r][c];
+  }
+
+  maze_cell* get_node(int r, int c) {
+    if (in_bounds(r, c)) return grid[r][c];
+    Serial.println("Invalid cell access.");
+    return nullptr;
+  }
+
+
   ~maze_map() {
     // clean up any allocated cells
     for (int r = 0; r < MAZE_ROWS; ++r) {
@@ -96,11 +111,14 @@ public:
 
   ///////////////////// Flood Fill Algorithm /////////////////////
   void flood_fill(int goal_r, int goal_c) {
-    // BFS only starts if goal cell exists
-    maze_cell* goal = ensure_cell(goal_r, goal_c);
-    if (!goal) { return; } 
+    // Only flood over KNOWN/ALLOCATED cells.
+    maze_cell* goal = get_cell(goal_r, goal_c);
+    if (!goal) {
+      // Goal is not on the known map yet; nothing to do.
+      return;
+    }
 
-    // Reset distances on existing cells
+    // Reset distances on existing cells only
     for (int r = 0; r < MAZE_ROWS; ++r) {
       for (int c = 0; c < MAZE_COLS; ++c) {
         if (grid[r][c]) grid[r][c]->setFFDist(FLOOD_FILL_INF);
@@ -120,20 +138,15 @@ public:
       const int d = cur->getFFDist();
 
       for (int dir = 0; dir < 4; ++dir) {
+        if (!cur->isOpen(dir)) continue;              // only traverse known-open edges
+
         const int nr = r + row_step[dir];
         const int nc = c + col_step[dir];
-
         if (!in_bounds(nr, nc)) continue;
-        if (!cur->isOpen(dir))  continue;  // blocked edge
 
-        maze_cell* n = grid[nr][nc];
-        if (!n) {
-          // Allocate neighbor since we know the edge is open
-          n = ensure_cell(nr, nc);
-          // For consistency, mark its opposite edge open
-          // setWallState() expects a distance; pass a value >= WALL_THRESHOLD
-          n->setWallState(opposite_dir(dir), WALL_THRESHOLD + 1);
-        }
+        // READ-ONLY: do not allocate unknown neighbours here
+        maze_cell* n = get_cell(nr, nc);
+        if (!n) continue;
 
         if (n->getFFDist() > d + 1) {
           n->setFFDist(d + 1);
@@ -144,50 +157,114 @@ public:
   }
 
 
-  // Decide best move for the robot from (r,c)
-  int choose_best_dir(int r, int c) {
+  // int choose_best_dir(int r, int c, int goal_r, int goal_c) {
+  //   maze_cell* cur = get_cell(r, c);
+  //   if (!cur) return -1;
+
+  //   // Current Euclidean distance (in cell units)
+  //   const float cur_d = hypotf((float)(goal_r - r), (float)(goal_c - c));
+
+  //   int best_dir = -1;
+  //   float best_d = cur_d - 1e-6f;  // require strictly closer than current
+
+  //   for (int dir = 0; dir < 4; ++dir) {
+  //     if (!cur->isOpen(dir)) continue;
+
+  //     const int nr = r + row_step[dir];
+  //     const int nc = c + col_step[dir];
+  //     if (!in_bounds(nr, nc)) continue;
+
+  //     const float d = hypotf((float)(goal_r - nr), (float)(goal_c - nc));
+
+  //     // Only accept neighbours that are strictly closer than the current cell
+  //     if (d < best_d) {
+  //       best_d  = d;
+  //       best_dir = dir;
+  //     }
+  //   }
+
+  //   return best_dir;  // -1 means "no closer step" → caller should stop
+  // }
+
+  int choose_best_dir(int r, int c, int goal_r, int goal_c) {
     maze_cell* cur = get_cell(r, c);
-    if (!cur) return -1; // current cell not initialised yet
+    if (!cur) return -1;
 
-    int best_dir = -1;
-    int best_dist = FLOOD_FILL_INF;
+    // Current Euclidean distance (in cell units)
+    const float cur_d = hypotf((float)(goal_r - r), (float)(goal_c - c));
 
-    for (int dir = 0; dir < 3; ++dir) {
-      if (cur->isOpen(dir)) {
-        const int nr = r + row_step[dir];
-        const int nc = c + col_step[dir];
-        if (in_bounds(nr, nc)) {
-          // treat uninitialised neighbor as INF
-          int nd = FLOOD_FILL_INF;
-          if (grid[nr][nc]) nd = grid[nr][nc]->getFFDist();
-          if (nd <= best_dist) {
-            best_dist = nd;
-            best_dir = dir;
-          }
-        }
+    int   best_dir = -1;
+    float best_d   = cur_d - 1e-6f;  // require strictly closer than current
+
+    for (int dir = 0; dir < 4; ++dir) {
+      // 1) You cannot go where there's a wall (or unknown): only through known-open edges
+      if (!cur->isOpen(dir)) continue;
+
+      const int nr = r + row_step[dir];
+      const int nc = c + col_step[dir];
+      if (!in_bounds(nr, nc)) continue;
+
+      // 2) If neighbour already exists and says there's a wall on the reciprocal side, skip
+      if (maze_cell* n = get_cell(nr, nc)) {
+        if (n->isWall(opposite_dir(dir))) continue;
+        // (If n is unknown/null, we'll allow the step based on current cell's open edge.
+        //  The neighbour will be created/mirrored when you update after moving.)
+      }
+
+      // 3) Greedy: choose the neighbour with strictly smaller Euclidean distance to goal
+      const float d = hypotf((float)(goal_r - nr), (float)(goal_c - nc));
+      if (d < best_d) {
+        best_d  = d;
+        best_dir = dir;
       }
     }
-    return best_dir;  // returns N/E/S/W direction to move
+
+    return best_dir;  // -1 => no legal step that gets you closer
   }
 
   // Mark current cell visited and set walls from LiDAR (front/left/right).
   // Call ONCE when the robot is centred in a cell.
   void update(int row, int col, int heading, int front_mm, int left_mm, int right_mm) {
-    maze_cell* cell = ensure_cell(row, col); // allocate on first touch
+    maze_cell* cell = ensure_cell(row, col);
 
     if (!cell->isVisited()) {
       cell->setVisited(true);
       add_visited_count();
-      Serial.print("New cell at: ");
-      Serial.print(row);
-      Serial.print(", ");
-      Serial.println(col);
     }
 
-    // Convert robot-relative to absolute directions, then set walls
-    cell->setWallState(rel_to_abs(heading, 0), front_mm);
-    cell->setWallState(rel_to_abs(heading, 1), right_mm);
-    cell->setWallState(rel_to_abs(heading, 2), left_mm);
+    const int abs_front = rel_to_abs(heading, 0);
+    const int abs_right = rel_to_abs(heading, 1);
+    const int abs_left  = rel_to_abs(heading, 3);   // <-- was 2; fix to 3 (left)
+
+    // Write walls for current cell
+    cell->setWallState(abs_front, front_mm);
+    cell->setWallState(abs_right, right_mm);
+    cell->setWallState(abs_left,  left_mm);
+
+    // Mirror to neighbours
+    // mirror_to_neighbor(row, col, abs_front, front_mm);
+    // mirror_to_neighbor(row, col, abs_right, right_mm);
+    // mirror_to_neighbor(row, col, abs_left,  left_mm);
+  }
+
+  // Add this inside class maze_map (public or private as you prefer)
+  void mirror_to_neighbor(int row, int col, int abs_dir, int dist_mm) {
+    // Compute neighbour coordinates in the absolute direction
+    const int nr = row + row_step[abs_dir];
+    const int nc = col + col_step[abs_dir];
+    if (!in_bounds(nr, nc)) return;
+
+    if (dist_mm >= WALL_THRESHOLD) {
+      // Edge is OPEN → ensure neighbour exists and mark its opposite edge OPEN
+      maze_cell* n = ensure_cell(nr, nc);
+      n->setWallState(opposite_dir(abs_dir), WALL_THRESHOLD + 1);
+    } else {
+      // Edge is a WALL → if neighbour exists, mark its opposite edge as WALL
+      maze_cell* n = get_cell(nr, nc);
+      if (n) {
+        n->setWallState(opposite_dir(abs_dir), 0); // any value < WALL_THRESHOLD
+      }
+    }
   }
 
   static bool in_bounds(int r, int c) {
@@ -203,18 +280,11 @@ public:
   } // rel: 0=front,1=right,2=back,3=left
 
 private:
-  // Returns existing cell pointer or nullptr
-  maze_cell* get_cell(int r, int c) const {
-    if (!in_bounds(r, c)) return nullptr;
-    return grid[r][c];
-  }
-
   // Ensures a cell exists; allocates and constructs if needed
   maze_cell* ensure_cell(int r, int c) {
     if (!in_bounds(r, c)) return nullptr;
     if (!grid[r][c]) {
       grid[r][c] = new maze_cell(r, c, FLOOD_FILL_INF);
-      Serial.println("New cell");
     }
     return grid[r][c];
   }
