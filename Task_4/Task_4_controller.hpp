@@ -295,20 +295,22 @@ public:
       switch (dir) {
         case 0: 
           Serial.println("Moving straight"); 
+          moveStraightOdomAvg(180);
         case 1: 
           Serial.println("Turning Right"); 
           turnOdom(-90);
           delay(100);  
-        case 2: 
-          Serial.println("Moving Back"); 
-          moveStraightOdomAvg(-180);
-          return;
+          moveStraightOdomAvg(180);
         case 3: 
           Serial.println("Turning Left"); 
           turnOdom(90);
           delay(100);  
+          moveStraightOdomAvg(180);
+        case 4: 
+          Serial.println("Moving Back"); 
+          moveStraightOdomAvg(-180);
+          return;
       }
-      moveStraightOdomAvg(180);
     }
 
 private:

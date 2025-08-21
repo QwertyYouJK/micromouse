@@ -56,7 +56,7 @@ public:
   void setFFDist(int dist) { ff_dist = dist; }
 
   // Directions and wall states
-  enum direction: int {north = 0, east = 1, south = 2, west = 3};
+  enum direction: int {north = 0, east = 1, west = 2, south = 3,};
   enum wall_state: int {wall_unknown = -1, wall_open = 0, wall_present = 1};
 
 private:
@@ -96,8 +96,9 @@ public:
 
   ///////////////////// Flood Fill Algorithm /////////////////////
   void flood_fill(int goal_r, int goal_c) {
-    // Ensure goal exists so BFS can start
+    // BFS only starts if goal cell exists
     maze_cell* goal = ensure_cell(goal_r, goal_c);
+    if (!goal) { return; } 
 
     // Reset distances on existing cells
     for (int r = 0; r < MAZE_ROWS; ++r) {
@@ -151,7 +152,7 @@ public:
     int best_dir = -1;
     int best_dist = FLOOD_FILL_INF;
 
-    for (int dir = 0; dir < 4; ++dir) {
+    for (int dir = 0; dir < 3; ++dir) {
       if (cur->isOpen(dir)) {
         const int nr = r + row_step[dir];
         const int nc = c + col_step[dir];
@@ -159,7 +160,7 @@ public:
           // treat uninitialised neighbor as INF
           int nd = FLOOD_FILL_INF;
           if (grid[nr][nc]) nd = grid[nr][nc]->getFFDist();
-          if (nd < best_dist) {
+          if (nd <= best_dist) {
             best_dist = nd;
             best_dir = dir;
           }
@@ -173,21 +174,20 @@ public:
   // Call ONCE when the robot is centred in a cell.
   void update(int row, int col, int heading, int front_mm, int left_mm, int right_mm) {
     maze_cell* cell = ensure_cell(row, col); // allocate on first touch
-    Serial.print("New cell at: ");
-    Serial.print(row);
-    Serial.print(", ");
-    Serial.println(col);
-
 
     if (!cell->isVisited()) {
       cell->setVisited(true);
       add_visited_count();
+      Serial.print("New cell at: ");
+      Serial.print(row);
+      Serial.print(", ");
+      Serial.println(col);
     }
 
     // Convert robot-relative to absolute directions, then set walls
     cell->setWallState(rel_to_abs(heading, 0), front_mm);
     cell->setWallState(rel_to_abs(heading, 1), right_mm);
-    cell->setWallState(rel_to_abs(heading, 3), left_mm);
+    cell->setWallState(rel_to_abs(heading, 2), left_mm);
   }
 
   static bool in_bounds(int r, int c) {
@@ -220,7 +220,7 @@ private:
   }
 
   maze_cell* grid[MAZE_ROWS][MAZE_COLS]; // lazily allocated cells (nullptr until visited)
-  int        visited_count;
+  int visited_count;
 };
 
 }  // namespace mtrn3100

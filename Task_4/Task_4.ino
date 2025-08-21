@@ -86,7 +86,7 @@ mtrn3100::Controller controller(
   );
 
 mtrn3100::maze_map maze;
-enum direction: int {north = 0, east = 1, south = 2, west = 3};
+enum direction: int {north = 0, east = 1, west = 2, south = 3};
 
 int original_yaw;
 
@@ -124,15 +124,15 @@ void setup() {
 void loop() {
 
   // Initial robot state
-  int row = 0, col = 0;
+  int start_row = 0, start_col = 0;
   int heading = 0; 
 
-  // Define goal cell (e.g. center of maze)
-  const int goal_r = MAZE_ROWS / 2;
-  const int goal_c = MAZE_COLS / 2;
+  // Define goal cell 
+  const int goal_r = 1;
+  const int goal_c = 1;
   
   // Perform one autonomous mapping/navigation step
-  autonom_map(row, col, goal_r, goal_c, heading);
+  autonom_map(start_row, start_col, goal_r, goal_c, heading);
 
   delay(10000);
 }
@@ -155,7 +155,8 @@ void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) 
 
     // Run flood fill from goal
     maze.flood_fill(goal_r, goal_c);
-
+    
+    Serial.println("Flood fill finished, moving...");
     // Pick best direction to move
     int dir = maze.choose_best_dir(row, col);
     if (dir == -1) {
@@ -176,4 +177,7 @@ void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) 
   }
 
   Serial.println("Reached goal!");
+  leftMotor.setPWM(MOTOFF);
+  rightMotor.setPWM(MOTOFF);
+  delay(10000);
 }
