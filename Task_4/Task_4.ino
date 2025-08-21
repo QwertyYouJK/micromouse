@@ -26,7 +26,7 @@
 // motor constants
 #define MAXPWM 255 // max PWM
 #define MOTPWM 30 // example PWM
-#define ACPTPWM 50 // acceptable PWM
+#define ACPTPWM 100 // acceptable PWM
 #define MOTOFF 0 // off
 #define LEFTADJ -1 // adjustment values
 #define RIGHTADJ 1 // adjustment values
@@ -36,15 +36,20 @@
 #define AXLEN 103 // Axle length
 
 // motor PID controller constants
-#define MKP 8 // proportional gain
-#define MKI 0.2 // integral gain
-#define MKD 0.9 // derivative gain
-#define MBOUND 2 // error, millimetres
+#define MKP 100 // proportional gain
+#define MKI 1 // integral gain
+#define MKD 5 // derivative gain
+#define MBOUND 2//2 // error, millimetres
 
 // for turning:
-#define TKP 50
-#define TKI 1
-#define TKD 2
+#define TKP 100
+#define TKI 0
+#define TKD 0
+
+#define TIKP 0
+#define TIKI 0
+#define TIKD 0
+
 #define ABOUND 0.01 // error, radians
 
 #define SENSOR_LEFT A0
@@ -78,7 +83,7 @@ mtrn3100::Controller controller(
   &rightMotor, 
   &leftPid, 
   &rightPid, 
-  &turnPid, 
+  &turnPid,
   frontLidar,
   leftLidar,
   rightLidar,
