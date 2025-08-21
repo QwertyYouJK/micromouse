@@ -1,3 +1,5 @@
+import os
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
 import cv2
 from pathlib import Path
 import random
@@ -194,10 +196,24 @@ def in_roi(node_id, n, row, col, size):
     return (row <= r < row + size) and (col <= c < col + size)
 
 #========================= CODE =========================#
-img_path = Path(__file__).parent / "Micromouse_continuous_1.jpg" 
-img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
-if img is None:
-    raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
+cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
+ret, img = cam.read()
+cam.release() # release the camera
+
+if not ret:
+  print("error: couldn't take photo")
+  exit(1)
+
+# save image
+script_dir = Path(__file__).parent
+output_path = script_dir / "maze_img.jpg"
+cv2.imwrite(str(output_path), img)
+
+
+# img_path = Path(__file__).parent / "Micromouse_continuous_1.jpg" 
+# img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+# if img is None:
+#     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
 
 width = img.shape[1] // 4
 height = img.shape[0] // 4
