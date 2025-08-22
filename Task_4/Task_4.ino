@@ -5,7 +5,14 @@
 #include "Task_4_controller.hpp"
 #include "Task_4_LIDAR.hpp"
 #include "Task_4_IMUOdometry.hpp"
-#include "Task_4.1.1.hpp"
+
+#include "Task_4_oled_new.hpp"
+// #include "Task_4_autonom.hpp"
+// #include "Task_4_oled.hpp"
+// #include "Task_4_oled_mapping.hpp"
+// #include "Task_4_maze_map.hpp"
+
+#include "Stack.h"
 
 #include "Wire.h"
 #include <MPU6050_light.h>
@@ -36,19 +43,30 @@
 #define AXLEN 103 // Axle length
 
 // motor PID controller constants
-#define MKP 100 // proportional gain
-#define MKI 1 // integral gain
-#define MKD 5 // derivative gain
-#define MBOUND 2//2 // error, millimetres
+#define MKP 8 // proportional gain
+#define MKI 0.2 // integral gain
+#define MKD 0.9 // derivative gain
+#define MBOUND 2 // error, millimetres
 
 // for turning:
-#define TKP 100
-#define TKI 0
-#define TKD 0
+#define TKP 50
+#define TKI 1
+#define TKD 2
 
-#define TIKP 0
-#define TIKI 0
-#define TIKD 0
+// // motor PID controller constants
+// #define MKP 100 // proportional gain
+// #define MKI 1 // integral gain
+// #define MKD 5 // derivative gain
+// #define MBOUND 2//2 // error, millimetres
+
+// // for turning:
+// #define TKP 100
+// #define TKI 0
+// #define TKD 0
+
+// #define TIKP 0
+// #define TIKI 0
+// #define TIKD 0
 
 #define ABOUND 0.01 // error, radians
 
@@ -59,6 +77,8 @@
 #define ADDR_FRONT 0x56
 #define ADDR_LEFT  0x54
 #define ADDR_RIGHT 0x55
+
+// U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
 
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
@@ -90,6 +110,12 @@ mtrn3100::Controller controller(
   &IMU
   );
 
+mtrn3100::Coord start = {0, 0};
+mtrn3100::Coord goal  = {8, 8};
+
+mtrn3100::Maze maze;
+mtrn3100::Navigator nav(maze, controller, start, goal, 0);
+
 int original_yaw;
 String token;
 
@@ -101,6 +127,13 @@ char seq42[] =
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting up!");
+
+  //////////////////// OLED setup ////////////////////
+  // u8x8.begin();
+  // u8x8.setPowerSave(0);
+  // u8x8.clear();
+  // u8x8.setFont(u8x8_font_chroma48medium8_r);
+  // u8x8.drawString(0, 0, "BallerinaArduina");
 
   //////////////////// Lidar setup ////////////////////
   frontLidar.begin(ADDR_FRONT);
@@ -126,15 +159,125 @@ void setup() {
   Serial.print("IMU ready, facing: ");
   Serial.println(original_yaw);
 
-  // controller.sequence_move(seq41);
-  // controller.execute_sequence(seq42);
+  delay(100);
 }
 
 void loop() {
-  // Serial.print("leftDist  = ");
-  // Serial.print(leftLidar.readMillimetres());
-  // Serial.print(" rightDist  = ");
-  // Serial.print(rightLidar.readMillimetres());
-  // Serial.print(" frontDist  = ");
-  // Serial.println(frontLidar.readMillimetres());
+  //////////////////// TASK 4.1 ////////////////////
+  char sequence = [];
+  controller.sequence_move(sequence);
+
+  //////////////////// TASK 4.2 ////////////////////
+  // controller.execute_sequence(seq42);
+
+  //////////////////// TASK 4.3 ////////////////////
+    // autonomous_map();
+    // delay(100000);
 }
+
+
+void autonomous_map() {
+  // mapping::commitCellAndRedraw(u8x8, maze, frontLidar, leftLidar, rightLidar, 0, 0, 0);
+
+  // Step 1: Explore maze until reaching goal
+  // nav.explore();
+  explore_stack();
+
+  // Step 2: Compute shortest path
+  mtrn3100::Coord path[MAZE_ROWS * MAZE_COLS];
+  int pathLen = 0;
+  nav.shortestPath(start, goal, path, pathLen);
+
+  // Step 3: Go back to start
+  mtrn3100::Coord backPath[MAZE_ROWS * MAZE_COLS];
+  int backLen = 0;
+  nav.shortestPath(nav.pos, start, backPath, backLen);
+  nav.followPath(backPath, backLen);
+
+  // Step 4: Follow shortest path to goal
+  nav.followPath(path, pathLen);
+
+  Serial.println("Navigation complete.");
+}
+
+void explore() {
+  // Simple DFS exploration until reaching goal
+  dfs(nav.pos);
+}
+
+void dfs(mtrn3100::Coord c) {
+  maze.grid[c.y][c.x].visited = true;
+  if (c == goal) return;
+
+  // Check walls using lidar
+  nav.updateWalls();
+  for (int d = 0; d < 4; d++) {
+    mtrn3100::Coord next = maze.neighbor(c, (direction)d);
+    if (maze.inBounds(next) &&
+      !maze.grid[next.y][next.x].visited &&
+      !maze.grid[c.y][c.x].walls[d]) 
+    {
+      controller.move_direction((direction)d);
+        // mtrn3100::drawMaze(
+        //   u8x8,
+        //   maze,
+        //   c.y,      
+        //   c.x,     
+        //   (direction)d,
+        //   mtrn3100::countVisitedCells(maze),
+        //   MAZE_ROWS * MAZE_COLS - NUM_CORNER_CELLS,
+        //   mtrn3100::percentVisited(maze)
+        // );
+      nav.heading = (direction)d;
+      nav.pos = next;
+
+      dfs(next);
+
+      // Backtrack
+      controller.move_direction((direction)((d + 2) % 4));
+      nav.heading = (direction)d;
+      nav.pos = c;
+      controller.move_direction((direction)d); // restore orientation
+      nav.heading = (direction)d;
+    }
+  }
+}
+
+void explore_stack() {
+  mtrn3100::Coord stack[MAZE_ROWS * MAZE_COLS];
+  int top = 0;
+  stack[top++] = nav.pos;
+
+  while (top > 0) {
+    mtrn3100::Coord c = stack[--top];
+    maze.grid[c.y][c.x].visited = true;
+
+    if (c == goal) return;
+
+    nav.updateWalls();
+
+    for (int d = 0; d < 4; d++) {
+      mtrn3100::Coord next = maze.neighbor(c, (direction)d);
+      if (maze.inBounds(next) &&
+          !maze.grid[next.y][next.x].visited &&
+          !maze.grid[c.y][c.x].walls[d]) {
+        
+        controller.move_direction((direction)d);
+        nav.heading = (direction)d;
+        nav.pos = next;
+
+        // mtrn3100::drawMaze(
+        //   u8x8, maze,
+        //   nav.pos.y, nav.pos.x, nav.heading,
+        //   mtrn3100::countVisitedCells(maze),
+        //   MAZE_ROWS * MAZE_COLS - NUM_CORNER_CELLS,
+        //   mtrn3100::percentVisited(maze)
+        // );
+
+        stack[top++] = next;
+      }
+    }
+  }
+}
+
+

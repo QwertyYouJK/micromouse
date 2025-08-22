@@ -67,10 +67,15 @@ public:
   {}
 
     void moveStraightOdom(float input) {
+<<<<<<< HEAD
 
       float dist_gain = 1.065; 
       float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
       float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
+=======
+      float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
+      float targetRight = (WHRAD * encoder->getRightRotation()) + input;
+>>>>>>> victor/autonom
 
       leftPid->newTarget(targetLeft);
       rightPid->newTarget(targetRight);
@@ -205,9 +210,17 @@ public:
         float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
         float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
+<<<<<<< HEAD
         uint16_t leftDist  = leftLidar.readMillimetres();
         uint16_t rightDist = rightLidar.readMillimetres();
         uint16_t frontDist = frontLidar.readMillimetres();
+=======
+          // ---------------------------
+          // LIDAR wall correction
+          // ---------------------------
+          const float MIN_WALL_DIST = 40.0;   // mm
+          const float CORR_GAIN = 0.3;    // tuning factor
+>>>>>>> victor/autonom
 
         IMU->update();
 
@@ -317,6 +330,7 @@ public:
       Serial.print("Turning with IMU to: ");
       Serial.println(target_angle);
 
+<<<<<<< HEAD
       while(1) {
         IMU->update();
         float curr_angle = IMU->get_yaw();
@@ -329,6 +343,33 @@ public:
         if (abs(turnPid->getError()) < IMU_ABOUND) {
           Serial.println("IMU turn finsished");
           break;
+=======
+        switch(receivedChar) {
+          case 'l':
+            turnOdom(90);
+            delay(100);
+            break;
+          case 'r':
+            turnOdom(-90);
+            delay(100);
+            break;
+          case 'f':
+            // moveStraightOdom(180);
+            moveStraightOdomAvg(180);
+            delay(50);
+            break;
+          case 'b':
+            moveStraightOdom(-180);
+            delay(50);
+            break;
+          case 'd':
+            turnOdom(0.001);
+            break;
+          case 's':
+            leftMotor->setPWM(MOTOFF);
+            rightMotor->setPWM(MOTOFF);
+            break;
+>>>>>>> victor/autonom
         }
       }
 
@@ -395,8 +436,67 @@ public:
           rightMotor->setPWM(MOTOFF);
           break;
       }
+<<<<<<< HEAD
     }
   }
+=======
+    
+    void move_direction(int dir) {
+      switch (dir) {
+        case 0: 
+          Serial.println("Moving straight"); 
+          break;
+        case 1: 
+          Serial.println("Turning Right"); 
+          turnOdom(-90);
+          delay(100);  
+          break;
+        case 2: 
+          Serial.println("Turning aroud"); 
+          turnOdom(180);
+          break;
+        case 3: 
+          Serial.println("Turning Left"); 
+          turnOdom(90);
+          delay(100);  
+          break;
+      }
+      moveStraightOdomAvg(180);
+      delay(50);
+    }
+
+    int front_lidar_dist() {
+      return frontLidar.readMillimetres();
+    }
+    int left_lidar_dist() {
+      return leftLidar.readMillimetres();
+    }
+    int right_lidar_dist() {
+      return rightLidar.readMillimetres();
+    }
+
+     /** 
+     * Check if something is < 30mm in front. 
+     * If so, move backwards until the front distance >= 50mm.
+     */
+    void checkAndRetreat() {
+      const int TOO_CLOSE = 30;   // mm
+      const int SAFE_DIST = 50;   // mm
+
+      // Read current distance
+      uint16_t frontDist = frontLidar.readMillimetres();
+      if (!frontLidar.timeoutOccurred() && frontDist < TOO_CLOSE) {
+        Serial.print("Obstacle detected at: ");
+        Serial.print(frontDist);
+        Serial.println(" mm. Retreating...");
+
+        int step_back = SAFE_DIST - front_dist;
+        // Step backwards using odometry
+        moveStraightOdomAvg(step_back);  
+        delay(50); // small pause between steps
+      }
+    }
+>>>>>>> victor/autonom
 
   void turn_to_angle(int original_yaw) {
     IMU->update();
