@@ -67,15 +67,9 @@ public:
   {}
 
     void moveStraightOdom(float input) {
-<<<<<<< HEAD
-
       float dist_gain = 1.065; 
       float targetLeft = ((WHRAD * encoder->getLeftRotation() + input) * dist_gain);
       float targetRight = ((WHRAD * encoder->getRightRotation() + input) * dist_gain);
-=======
-      float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
-      float targetRight = (WHRAD * encoder->getRightRotation()) + input;
->>>>>>> victor/autonom
 
       leftPid->newTarget(targetLeft);
       rightPid->newTarget(targetRight);
@@ -184,14 +178,14 @@ public:
       rightPid->newTarget(targetAvg);
 
       // get initial angle to compare to the end for adjustments
-      IMU->update();
-      float init_heading = IMU->get_yaw();
+      // IMU->update();
+      // float init_heading = IMU->get_yaw();
 
       // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
       // float init_heading = encoderOdometry->getH();
 
-      Serial.print("init: ");
-      Serial.println(init_heading);
+      // Serial.print("init: ");
+      // Serial.println(init_heading);
 
       Serial.print("moving straight: ");
       Serial.print(input);
@@ -210,40 +204,35 @@ public:
         float leftPWM = constrain(outLeft * LEFTADJ, -ACPTPWM, ACPTPWM);
         float rightPWM = constrain(outRight * RIGHTADJ, -ACPTPWM, ACPTPWM);
 
-<<<<<<< HEAD
         uint16_t leftDist  = leftLidar.readMillimetres();
         uint16_t rightDist = rightLidar.readMillimetres();
         uint16_t frontDist = frontLidar.readMillimetres();
-=======
-          // ---------------------------
-          // LIDAR wall correction
-          // ---------------------------
-          const float MIN_WALL_DIST = 40.0;   // mm
-          const float CORR_GAIN = 0.3;    // tuning factor
->>>>>>> victor/autonom
+        // ---------------------------
+        // LIDAR wall correction
+        // ---------------------------
 
         IMU->update();
 
-        // Stop early if front wall too close
-        if (frontDist < MIN_FRONT_WALL_DIST && !frontLidar.timeoutOccurred()) {
-            Serial.println("Front wall detected - stopping early.");
-            IMU->update();
-            break;
-        }
+        // // Stop early if front wall too close
+        // if (frontDist < MIN_FRONT_WALL_DIST && !frontLidar.timeoutOccurred()) {
+        //     Serial.println("Front wall detected - stopping early.");
+        //     IMU->update();
+        //     break;
+        // }
 
         // If left wall close, push robot slightly right
         if (leftDist < MIN_WALL_DIST && !leftLidar.timeoutOccurred()) {
           float corr = CORR_GAIN * (MIN_WALL_DIST - leftDist);
-          leftPWM -= corr;
-          rightPWM -= corr;
+          leftPWM += corr;
+          rightPWM += corr;
           IMU->update();
         }
 
         // If right wall close, push robot slightly left
         if (rightDist < MIN_WALL_DIST && !rightLidar.timeoutOccurred()) {
           float corr = CORR_GAIN * (MIN_WALL_DIST - rightDist);
-          leftPWM += corr;
-          rightPWM += corr;
+          leftPWM -= corr;
+          rightPWM -= corr;
           IMU->update();
         }
 
@@ -257,27 +246,27 @@ public:
         }
       }
 
-      // check heading
-      delay(10);
+      // // check heading
+      // delay(10);
       
-      // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
-      // float curr_heading = encoderOdometry->getH();
-      // float correction_angle = (init_heading - curr_heading) * (PI / 180);
-      IMU->update();
-      float curr_heading = IMU->get_yaw();
-      float correction_angle = (init_heading - curr_heading);
+      // // encoderOdometry->update(encoder->getLeftRotation(),encoder->getRightRotation());
+      // // float curr_heading = encoderOdometry->getH();
+      // // float correction_angle = (init_heading - curr_heading) * (PI / 180);
+      // IMU->update();
+      // float curr_heading = IMU->get_yaw();
+      // float correction_angle = (init_heading - curr_heading);
 
-      Serial.print(" curr: "); Serial.print(curr_heading);
-      Serial.print(" turned: "); Serial.println(correction_angle);
+      // Serial.print(" curr: "); Serial.print(curr_heading);
+      // Serial.print(" turned: "); Serial.println(correction_angle);
 
-      IMU->update();
-      //turnOdom(correction_angle);
-      turnIMU(correction_angle);
-      delay(10);
+      // IMU->update();
+      // //turnOdom(correction_angle);
+      // turnIMU(correction_angle);
+      // delay(10);
 
-      IMU->update();
-      float snap_to_angle = round(correction_angle / 90.0 ) * 90.0;
-      turnIMU(snap_to_angle);
+      // IMU->update();
+      // float snap_to_angle = round(correction_angle / 90.0 ) * 90.0;
+      // turnIMU(snap_to_angle);
 
       delay(10);
       leftMotor->setPWM(MOTOFF);
@@ -383,6 +372,7 @@ public:
       Serial.print("Executing: ");
       Serial.println(receivedChar);
 
+      checkAndRetreat();
       switch(receivedChar) {
         case 'l':
           turnOdom(90);
@@ -450,8 +440,8 @@ public:
      * If so, move backwards until the front distance >= 50mm.
      */
     void checkAndRetreat() {
-      const int TOO_CLOSE = 30;   // mm
-      const int SAFE_DIST = 50;   // mm
+      const int TOO_CLOSE = 60;   // mm
+      const int SAFE_DIST = 60;   // mm
 
       // Read current distance
       uint16_t frontDist = frontLidar.readMillimetres();
@@ -460,9 +450,9 @@ public:
         Serial.print(frontDist);
         Serial.println(" mm. Retreating...");
 
-        int step_back = SAFE_DIST - front_dist;
+        int step_back = frontDist - SAFE_DIST;
         // Step backwards using odometry
-        moveStraightOdomAvg(step_back);  
+        moveCorrectionStraightOdomAvg(step_back);  
         delay(50); // small pause between steps
       }
     }

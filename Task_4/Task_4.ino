@@ -164,11 +164,12 @@ void setup() {
 
 void loop() {
   //////////////////// TASK 4.1 ////////////////////
-  char sequence = [];
-  controller.sequence_move(sequence);
+  char sequence_1[] = "ffrr";
+  controller.sequence_move(sequence_1);
 
   //////////////////// TASK 4.2 ////////////////////
-  // controller.execute_sequence(seq42);
+  // char sequence_2 = [];
+  // controller.execute_sequence(sequence_2);
 
   //////////////////// TASK 4.3 ////////////////////
     // autonomous_map();
