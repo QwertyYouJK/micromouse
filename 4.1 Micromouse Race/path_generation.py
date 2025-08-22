@@ -19,8 +19,8 @@ graph_n = 9
 # y0, y8 = 23, 350
 
 # start and end cell (0,0) ~ (8,8)
-start = (2,0)
-end = (6,8)
+start = (1,1)
+end = (4,4)
 
 #======================== CLASSES ===========================#
 class Node:
@@ -153,7 +153,7 @@ def diff_to_h(diff):
 # output_path = script_dir / "maze_img.jpg"
 # cv2.imwrite(str(output_path), img)
 
-img_path = Path(__file__).parent / "Micromouse_continuous_2.jpg"   # same folder as script
+img_path = Path(__file__).parent / "MicromouseMazeCamera.jpg"   # same folder as script
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")

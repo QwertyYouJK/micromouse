@@ -9,25 +9,25 @@ import numpy as np
 
 #======================== VARIABLES ===========================#
 # Top left and bottom right of the maze to crop the image
-cropX1, cropX2 = (361, 767)
-cropY1, cropY2 = (69, 475)
-# cropX1, cropX2 = (349, 714)
-# cropY1, cropY2 = (88, 459)
+# cropX1, cropX2 = (361, 767)
+# cropY1, cropY2 = (69, 475)
+cropX1, cropX2 = (349, 714) # real maze settings
+cropY1, cropY2 = (88, 459) 
 
 # occupancy map vars
 unsafe_kernel_size = 5
 unsafe_iterations = 5
 
 # Define 5x5 grid 
-tl = (2, 2) # top left of 5x5 grid
-br = (6, 6) # bottom right of 5x5 grid
+tl = (4, 2) # top left of 5x5 grid
+br = (8, 6) # bottom right of 5x5 grid
 
 # (0,0) and (8,8) position, evenly spaced nodes will be placed
-x_start, x_end = 25, 377
-y_start, y_end = 25, 381
+# x_start, x_end = 25, 377
+# y_start, y_end = 25, 381
 graph_n = 9
-# x_start, x_end = 21, 340
-# y_start, y_end = 23, 350
+x_start, x_end = 21, 340 # real maze settings
+y_start, y_end = 23, 350
 
 # Graph variables
 random.seed(69)
@@ -35,8 +35,8 @@ prm_total_nodes_count = 75
 prm_connection_radius = 100
 
 # start and end cell (0,0) ~ (8,8)
-start = (5,8)
-end = (1,4)
+start = (3,1)
+end = (7,7)
 
 PX_TO_MM = 180.0 / 44.5
 
@@ -210,7 +210,7 @@ def in_roi(node_id, n, row, col, size):
 # cv2.imwrite(str(output_path), img)
 
 
-img_path = Path(__file__).parent / "Micromouse_continuous_1.jpg" 
+img_path = Path(__file__).parent / "RealMaze.jpg" 
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")

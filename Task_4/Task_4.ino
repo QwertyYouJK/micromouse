@@ -117,7 +117,7 @@ mtrn3100::Maze maze;
 mtrn3100::Navigator nav(maze, controller, start, goal, 0);
 
 int original_yaw;
-String token;
+// String token;
 
 String seq41 = "flfrffffffrflfrffffs";
 char seq42[] = 
@@ -164,16 +164,16 @@ void setup() {
 
 void loop() {
   //////////////////// TASK 4.1 ////////////////////
-  char sequence_1[] = "ffrr";
-  controller.sequence_move(sequence_1);
+  // char sequence_1[] = "fffrfrflfflfs";
+  // controller.sequence_move(sequence_1);
 
   //////////////////// TASK 4.2 ////////////////////
-  // char sequence_2 = [];
-  // controller.execute_sequence(sequence_2);
+  char sequence_2[] = "f162;T-90;f162;T46;f180;T1;f281;T7;f203;T23;f310;T12;f0;";
+  controller.execute_sequence(sequence_2);
 
   //////////////////// TASK 4.3 ////////////////////
     // autonomous_map();
-    // delay(100000);
+  delay(100000);
 }
 
 
