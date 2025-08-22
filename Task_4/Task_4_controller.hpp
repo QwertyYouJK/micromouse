@@ -484,6 +484,7 @@ public:
       if (!*tok) continue;
       char op = tok[0];
       float val = atof(tok + 1);
+      checkAndRetreat();
       if (op == 'F') moveStraightOdomAvg(val);
       else if (op == 'f') moveStraightOdomAvg(val);
       else if (op == 'T') turnOdom(val);
