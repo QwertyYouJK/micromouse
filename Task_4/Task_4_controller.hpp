@@ -402,23 +402,22 @@ public:
   }
     
     void move_direction(int dir) {
+      checkAndRetreat();
       switch (dir) {
         case 0: 
-          Serial.println("Moving straight"); 
           break;
         case 1: 
-          Serial.println("Turning Right"); 
           turnOdom(-90);
-          delay(100);  
+          Serial.println("Turning left");
           break;
         case 2: 
-          Serial.println("Turning aroud"); 
-          turnOdom(180);
+          turnOdom(-90);
+          turnOdom(-90);
+          Serial.println("Turning around");
           break;
         case 3: 
-          Serial.println("Turning Left"); 
           turnOdom(90);
-          delay(100);  
+          Serial.println("Turning right");
           break;
       }
       moveStraightOdomAvg(180);

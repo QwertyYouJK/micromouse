@@ -111,7 +111,7 @@ mtrn3100::Controller controller(
   );
 
 mtrn3100::Coord start = {0, 0};
-mtrn3100::Coord goal  = {8, 8};
+mtrn3100::Coord goal  = {1, 1};
 
 mtrn3100::Maze maze;
 mtrn3100::Navigator nav(maze, controller, start, goal, 0);
@@ -164,16 +164,16 @@ void setup() {
 
 void loop() {
   //////////////////// TASK 4.1 ////////////////////
-  char sequence_1[] = "ffrr";
-  controller.sequence_move(sequence_1);
+  // char sequence_1[] = "ffrr";
+  // controller.sequence_move(sequence_1);
 
   //////////////////// TASK 4.2 ////////////////////
   // char sequence_2 = [];
   // controller.execute_sequence(sequence_2);
 
   //////////////////// TASK 4.3 ////////////////////
-    // autonomous_map();
-    // delay(100000);
+  autonomous_map();
+  delay(100000);
 }
 
 
@@ -182,21 +182,21 @@ void autonomous_map() {
 
   // Step 1: Explore maze until reaching goal
   // nav.explore();
-  explore_stack();
+  explore();
 
-  // Step 2: Compute shortest path
-  mtrn3100::Coord path[MAZE_ROWS * MAZE_COLS];
-  int pathLen = 0;
-  nav.shortestPath(start, goal, path, pathLen);
+  // // Step 2: Compute shortest path
+  // mtrn3100::Coord path[MAZE_ROWS * MAZE_COLS];
+  // int pathLen = 0;
+  // nav.shortestPath(start, goal, path, pathLen);
 
-  // Step 3: Go back to start
-  mtrn3100::Coord backPath[MAZE_ROWS * MAZE_COLS];
-  int backLen = 0;
-  nav.shortestPath(nav.pos, start, backPath, backLen);
-  nav.followPath(backPath, backLen);
+  // // Step 3: Go back to start
+  // mtrn3100::Coord backPath[MAZE_ROWS * MAZE_COLS];
+  // int backLen = 0;
+  // nav.shortestPath(nav.pos, start, backPath, backLen);
+  // nav.followPath(backPath, backLen);
 
-  // Step 4: Follow shortest path to goal
-  nav.followPath(path, pathLen);
+  // // Step 4: Follow shortest path to goal
+  // nav.followPath(path, pathLen);
 
   Serial.println("Navigation complete.");
 }
@@ -207,8 +207,14 @@ void explore() {
 }
 
 void dfs(mtrn3100::Coord c) {
+  Serial.print(c.y);
+  Serial.print(" ");
+  Serial.println(c.x);
+
   maze.grid[c.y][c.x].visited = true;
-  if (c == goal) return;
+  if (c == goal) {
+    delay(100000000);
+  }
 
   // Check walls using lidar
   nav.updateWalls();
