@@ -1,6 +1,7 @@
 #import opencv and numpy
 import cv2  
 import numpy as np
+from pathlib import Path
 
 #trackbar callback function to update HSV value
 def callback(x):
@@ -35,12 +36,13 @@ cv2.createTrackbar('high V', 'controls', 255, 255, callback)
 
 while(1):
     #read source image
-    img = cv2.imread("MicromouseMazeCamera.jpg")
+    img_path = Path(__file__).parent / "maze_img.jpg"
+    img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
     
     #scale down the image by a factor of 4
-    width = img.shape[1] // 4
-    height = img.shape[0] // 4
-    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+    # width = img.shape[1] // 4
+    # height = img.shape[0] // 4
+    # img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
     
     #convert source image to HSV color mode
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)

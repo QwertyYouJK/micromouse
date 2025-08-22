@@ -36,15 +36,15 @@ cv2.createTrackbar('high V', 'controls', 255, 255, callback)
 
 while(1):
     #read source image
-    img_path = Path(__file__).parent / "Micromouse_continuous_1.jpg"   # same folder as script
+    img_path = Path(__file__).parent / "finalMaze.jpg"   # same folder as script
     img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
     if img is None:
         raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
     
     #scale down the image by a factor of 4
-    width = img.shape[1] // 4
-    height = img.shape[0] // 4
-    img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+    # width = img.shape[1] // 4
+    # height = img.shape[0] // 4
+    # img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
     
     #convert source image to HSV color mode
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)

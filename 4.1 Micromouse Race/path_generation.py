@@ -6,21 +6,23 @@ import numpy as np
 import serial, time
 #======================== VARIABLES ===========================#
 # Top left and bottom right of the maze to crop the image
-cropX1, cropX2 = (361, 767)
-cropY1, cropY2 = (69, 475)
+# cropX1, cropX2 = (361, 767)
+# cropY1, cropY2 = (69, 475)
+cropX1, cropX2 = (199, 523) # real maze settings
+cropY1, cropY2 = (78, 408) 
 # cropX1, cropX2 = (349, 714)
 # cropY1, cropY2 = (88, 459)
 
 # (0,0) and (8,8) position, evenly spaced nodes will be placed
-x0, x8 = 25, 377
-y0, y8 = 25, 381
+x0, x8 = 15, 303
+y0, y8 = 14, 315
 graph_n = 9
 # x0, x8 = 21, 340
 # y0, y8 = 23, 350
 
 # start and end cell (0,0) ~ (8,8)
-start = (1,1)
-end = (4,4)
+start = (8,6)
+end = (7,5)
 
 #======================== CLASSES ===========================#
 class Node:
@@ -140,7 +142,7 @@ def diff_to_h(diff):
 
 #========================= CODE =========================#
 
-# cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
+# cam = cv2.VideoCapture(1) # use 0 if your device has no webcam
 # ret, img = cam.read()
 # cam.release() # release the camera
 
@@ -153,20 +155,20 @@ def diff_to_h(diff):
 # output_path = script_dir / "maze_img.jpg"
 # cv2.imwrite(str(output_path), img)
 
-img_path = Path(__file__).parent / "MicromouseMazeCamera.jpg"   # same folder as script
+img_path = Path(__file__).parent / "maze_img.jpg"   # same folder as script
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
 
-width = img.shape[1] // 4
-height = img.shape[0] // 4
-img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+# width = img.shape[1] // 4
+# height = img.shape[0] // 4
+# img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
 # Crop the image
 img = img[cropY1:cropY2, cropX1:cropX2]
 
 HSV_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-lower = np.array([0, 0, 160], np.uint8)
+lower = np.array([0, 0, 137], np.uint8)
 upper = np.array([179, 255, 255], np.uint8)
 maze_mask = cv2.inRange(HSV_img, lower, upper)
 

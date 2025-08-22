@@ -31,9 +31,9 @@
 #define RAMP_STEP 12 // max PWM change per loop
 #define KP_LIDAR 0.8 
 
-#define MIN_WALL_DIST 55.0   // mm
-#define MIN_FRONT_WALL_DIST 70.0   // mm
-#define CORR_GAIN 0.45    // tuning factor
+#define MIN_WALL_DIST 40.0   // mm
+#define MIN_FRONT_WALL_DIST 50.0   // mm
+#define CORR_GAIN 0.4    // tuning factor
 
 namespace mtrn3100 {
 
@@ -375,19 +375,19 @@ public:
       checkAndRetreat();
       switch(receivedChar) {
         case 'l':
-          turnOdom(90);
+          turnOdom(85);
           delay(100);
           break;
         case 'r':
-          turnOdom(-90);
+          turnOdom(-85);
           delay(100);
           break;
         case 'f':
-          moveStraightOdomAvg(180);
+          moveStraightOdomAvg(300);
           delay(50);
           break;
         case 'b':
-          moveStraightOdomAvg(-180);
+          moveStraightOdomAvg(-182);
           delay(50);
           break;
         case 'd':
@@ -421,7 +421,7 @@ public:
           delay(100);  
           break;
       }
-      moveStraightOdomAvg(180);
+      moveStraightOdomAvg(182);
       delay(50);
     }
 
@@ -440,8 +440,8 @@ public:
      * If so, move backwards until the front distance >= 50mm.
      */
     void checkAndRetreat() {
-      const int TOO_CLOSE = 60;   // mm
-      const int SAFE_DIST = 60;   // mm
+      const int TOO_CLOSE = 50;   // mm
+      const int SAFE_DIST = 55;   // mm
 
       // Read current distance
       uint16_t frontDist = frontLidar.readMillimetres();
@@ -485,6 +485,7 @@ public:
       char op = tok[0];
       float val = atof(tok + 1);
       checkAndRetreat();
+      IMU->update();
       if (op == 'F') moveStraightOdomAvg(val);
       else if (op == 'f') moveStraightOdomAvg(val);
       else if (op == 'T') turnOdom(val);
