@@ -330,7 +330,6 @@ public:
       Serial.print("Turning with IMU to: ");
       Serial.println(target_angle);
 
-<<<<<<< HEAD
       while(1) {
         IMU->update();
         float curr_angle = IMU->get_yaw();
@@ -343,33 +342,6 @@ public:
         if (abs(turnPid->getError()) < IMU_ABOUND) {
           Serial.println("IMU turn finsished");
           break;
-=======
-        switch(receivedChar) {
-          case 'l':
-            turnOdom(90);
-            delay(100);
-            break;
-          case 'r':
-            turnOdom(-90);
-            delay(100);
-            break;
-          case 'f':
-            // moveStraightOdom(180);
-            moveStraightOdomAvg(180);
-            delay(50);
-            break;
-          case 'b':
-            moveStraightOdom(-180);
-            delay(50);
-            break;
-          case 'd':
-            turnOdom(0.001);
-            break;
-          case 's':
-            leftMotor->setPWM(MOTOFF);
-            rightMotor->setPWM(MOTOFF);
-            break;
->>>>>>> victor/autonom
         }
       }
 
@@ -436,10 +408,8 @@ public:
           rightMotor->setPWM(MOTOFF);
           break;
       }
-<<<<<<< HEAD
     }
   }
-=======
     
     void move_direction(int dir) {
       switch (dir) {
@@ -496,7 +466,6 @@ public:
         delay(50); // small pause between steps
       }
     }
->>>>>>> victor/autonom
 
   void turn_to_angle(int original_yaw) {
     IMU->update();
