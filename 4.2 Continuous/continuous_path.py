@@ -11,34 +11,40 @@ import numpy as np
 # Top left and bottom right of the maze to crop the image
 # cropX1, cropX2 = (361, 767)
 # cropY1, cropY2 = (69, 475)
-cropX1, cropX2 = (349, 714) # real maze settings
-cropY1, cropY2 = (88, 459) 
+# cropX1, cropX2 = (172, 355) # real maze settings
+# cropY1, cropY2 = (43, 229) 
+# cropX1, cropX2 = (688, 1421) # real maze settings
+# cropY1, cropY2 = (171, 923) 
+cropX1, cropX2 = (199, 523) # real maze settings
+cropY1, cropY2 = (78, 408) 
 
 # occupancy map vars
 unsafe_kernel_size = 5
-unsafe_iterations = 5
+unsafe_iterations = 3
 
 # Define 5x5 grid 
-tl = (4, 2) # top left of 5x5 grid
-br = (8, 6) # bottom right of 5x5 grid
+tl = (0, 2) # top left of 5x5 grid
+br = (4, 6) # bottom right of 5x5 grid
 
 # (0,0) and (8,8) position, evenly spaced nodes will be placed
 # x_start, x_end = 25, 377
 # y_start, y_end = 25, 381
 graph_n = 9
-x_start, x_end = 21, 340 # real maze settings
-y_start, y_end = 23, 350
+x_start, x_end = 15, 303
+y_start, y_end = 14, 315
+# x_start, x_end = 21, 340 # real maze settings
+# y_start, y_end = 23, 350
 
 # Graph variables
 random.seed(69)
 prm_total_nodes_count = 75
-prm_connection_radius = 100
+prm_connection_radius = 200
 
 # start and end cell (0,0) ~ (8,8)
-start = (3,1)
-end = (7,7)
+start = (2,7)
+end = (7,5)
 
-PX_TO_MM = 180.0 / 44.5
+PX_TO_MM = 180.0 / 38
 
 #======================== CLASSES ===========================#
 class Node:
@@ -196,7 +202,7 @@ def in_roi(node_id, n, row, col, size):
     return (row <= r < row + size) and (col <= c < col + size)
 
 #========================= CODE =========================#
-# cam = cv2.VideoCapture(0) # use 0 if your device has no webcam
+# cam = cv2.VideoCapture(1) # use 0 if your device has no webcam
 # ret, img = cam.read()
 # cam.release() # release the camera
 
@@ -210,25 +216,25 @@ def in_roi(node_id, n, row, col, size):
 # cv2.imwrite(str(output_path), img)
 
 
-img_path = Path(__file__).parent / "RealMaze.jpg" 
+img_path = Path(__file__).parent / "maze_img.jpg" 
 img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
 if img is None:
     raise IOError(f"OpenCV could not read the image: {img_path.resolve()}")
 
-width = img.shape[1] // 4
-height = img.shape[0] // 4
-img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
-script_dir = Path(__file__).parent
-output_path = script_dir / "shrunk_maze.jpg"
-cv2.imwrite(str(output_path), img)
+# width = img.shape[1] // 4
+# height = img.shape[0] // 4
+# img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+# script_dir = Path(__file__).parent
+# output_path = script_dir / "shrunk_maze.jpg"
+# cv2.imwrite(str(output_path), img)
 
 # Crop the image
 img = img[cropY1:cropY2, cropX1:cropX2]
 
 # Maze mask
 HSV_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-lower = np.array([0, 0, 130], np.uint8)
-upper = np.array([151, 41, 255], np.uint8)
+lower = np.array([0, 0, 137], np.uint8)
+upper = np.array([179, 255, 255], np.uint8)
 maze_mask = cv2.inRange(HSV_img, lower, upper)
 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -272,6 +278,7 @@ graph = Graph()
 # add outside grid nodes into graph
 for i, (x, y) in enumerate(out_node_pos):
     # print(f"added node {i} to the graph, its position is at {x},{y}")
+    cv2.circle(maze_img, (int(x), int(y)), 6, (255, 255, 255), -1)
     graph.add_node(i, x, y)
 
 # add edges into graph
@@ -356,7 +363,7 @@ for i, (x1, y1) in enumerate(out_node_pos):
     dist = math.sqrt((start_x - x1) ** 2  + (start_y - y1) ** 2)
     if dist <= 50:
         # Add edge if path is clear
-        is_clear = path_clear(occ_map, x1, y1, start_x, start_y)
+        is_clear = path_clear(maze_img, x1, y1, start_x, start_y)
         if is_clear is True:
             graph.add_edge(-1, i, dist)
         
@@ -365,7 +372,7 @@ for i, (x1, y1) in enumerate(out_node_pos):
     if dist > 50:
         continue
     
-    is_clear = path_clear(occ_map, x1, y1, goal_x, goal_y)
+    is_clear = path_clear(maze_img, x1, y1, goal_x, goal_y)
     if is_clear is True:
         graph.add_edge(-2, i, dist)
 

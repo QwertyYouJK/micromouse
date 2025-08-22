@@ -78,7 +78,7 @@
 #define ADDR_LEFT  0x54
 #define ADDR_RIGHT 0x55
 
-// U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
 
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
@@ -129,11 +129,11 @@ void setup() {
   Serial.println("Starting up!");
 
   //////////////////// OLED setup ////////////////////
-  // u8x8.begin();
-  // u8x8.setPowerSave(0);
-  // u8x8.clear();
-  // u8x8.setFont(u8x8_font_chroma48medium8_r);
-  // u8x8.drawString(0, 0, "BallerinaArduina");
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+  u8x8.clear();
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  u8x8.drawString(0, 0, "BallerinaArduina");
 
   //////////////////// Lidar setup ////////////////////
   frontLidar.begin(ADDR_FRONT);
@@ -164,11 +164,16 @@ void setup() {
 
 void loop() {
   //////////////////// TASK 4.1 ////////////////////
-  // char sequence_1[] = "fffrfrflfflfs";
+  // // choose_dir(2)
+  // controller.turnOdom(90);
+  // controller.turnOdom(90);
+  // char sequence_1[] = "frflfrflflfrfrflfflfrflfrflfffflfffrfrflflfffflfrflflfrfrfflfflfs";
   // controller.sequence_move(sequence_1);
 
   //////////////////// TASK 4.2 ////////////////////
-  char sequence_2[] = "f162;T-90;f162;T46;f180;T1;f281;T7;f203;T23;f310;T12;f0;";
+  char sequence_2[] = "f175;T78;f378;T25;f392;T-25;f175;T-167;f171;T-90;f180;T90;f171;T90;f180;f175;f180;f180;T90;f171;T-90;f175;T90;f171;T90;f175;T-90;f171;T-90;f175;f180;T90;f171;f171;T90;f180;";
+  // controller.turnOdom(90);
+  // controller.turnOdom(90);
   controller.execute_sequence(sequence_2);
 
   //////////////////// TASK 4.3 ////////////////////
@@ -176,6 +181,26 @@ void loop() {
   delay(100000);
 }
 
+// int choose_dir(int dir);
+//   switch (dir) {
+//     case 0: 
+//       break;
+//     case 1: 
+//       Serial.println("Turning Right"); 
+//       turnOdom(-90);
+//       delay(100);  
+//       break;
+//     case 2: 
+//       Serial.println("Turning aroud"); 
+//       turnOdom(180);
+//       delay(100);
+//       break;
+//     case 3: 
+//       Serial.println("Turning Left"); 
+//       turnOdom(90);
+//       delay(100);  
+//       break;
+//   }
 
 void autonomous_map() {
   // mapping::commitCellAndRedraw(u8x8, maze, frontLidar, leftLidar, rightLidar, 0, 0, 0);
