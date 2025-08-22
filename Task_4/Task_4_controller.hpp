@@ -63,13 +63,6 @@ public:
   {}
 
     void moveStraightOdom(float input) {
-      // float target = input / WHRAD;
-      // float startLeft = (WHRAD * encoder->getLeftRotation());
-      // float startRight = (WHRAD * encoder->getRightRotation());
-
-      // leftPid->zeroTarget(startLeft, startLeft + input);
-      // rightPid->zeroTarget(startRight, startRight + input);
-
       float targetLeft = (WHRAD * encoder->getLeftRotation()) + input;
       float targetRight = (WHRAD * encoder->getRightRotation()) + input;
 
@@ -295,21 +288,55 @@ public:
       switch (dir) {
         case 0: 
           Serial.println("Moving straight"); 
-          moveStraightOdomAvg(180);
+          break;
         case 1: 
           Serial.println("Turning Right"); 
           turnOdom(-90);
           delay(100);  
-          moveStraightOdomAvg(180);
+          break;
+        case 2: 
+          Serial.println("Turning aroud"); 
+          turnOdom(180);
+          break;
         case 3: 
           Serial.println("Turning Left"); 
           turnOdom(90);
           delay(100);  
-          moveStraightOdomAvg(180);
-        // case 4: 
-        //   Serial.println("Moving Back"); 
-        //   moveStraightOdomAvg(-180);
-        //   return;
+          break;
+      }
+      moveStraightOdomAvg(180);
+      delay(50);
+    }
+
+    int front_lidar_dist() {
+      return frontLidar.readMillimetres();
+    }
+    int left_lidar_dist() {
+      return leftLidar.readMillimetres();
+    }
+    int right_lidar_dist() {
+      return rightLidar.readMillimetres();
+    }
+
+     /** 
+     * Check if something is < 30mm in front. 
+     * If so, move backwards until the front distance >= 50mm.
+     */
+    void checkAndRetreat() {
+      const int TOO_CLOSE = 30;   // mm
+      const int SAFE_DIST = 50;   // mm
+
+      // Read current distance
+      uint16_t frontDist = frontLidar.readMillimetres();
+      if (!frontLidar.timeoutOccurred() && frontDist < TOO_CLOSE) {
+        Serial.print("Obstacle detected at: ");
+        Serial.print(frontDist);
+        Serial.println(" mm. Retreating...");
+
+        int step_back = SAFE_DIST - front_dist;
+        // Step backwards using odometry
+        moveStraightOdomAvg(step_back);  
+        delay(50); // small pause between steps
       }
     }
 

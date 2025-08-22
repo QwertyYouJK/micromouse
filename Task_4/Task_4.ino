@@ -5,10 +5,14 @@
 #include "Task_4_controller.hpp"
 #include "Task_4_LIDAR.hpp"
 #include "Task_4_IMUOdometry.hpp"
-#include "Task_4_maze_map.hpp"
-#include "Task_4_oled.hpp"
-#include "Task_4_oled_mapping.hpp"
 
+#include "Task_4_oled_new.hpp"
+// #include "Task_4_autonom.hpp"
+// #include "Task_4_oled.hpp"
+// #include "Task_4_oled_mapping.hpp"
+// #include "Task_4_maze_map.hpp"
+
+#include "Stack.h"
 
 #include "Wire.h"
 #include <MPU6050_light.h>
@@ -58,7 +62,7 @@
 #define ADDR_LEFT  0x54
 #define ADDR_RIGHT 0x55
 
-U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
+// U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset = */ U8X8_PIN_NONE);
 
 // define motor classes
 mtrn3100::Motor leftMotor(MOTLPWM, MOTLDIR);
@@ -90,26 +94,24 @@ mtrn3100::Controller controller(
   &IMU
   );
 
-mtrn3100::maze_map maze;
-enum direction : int { north = 0, east = 1, south = 2, west = 3 };
+mtrn3100::Coord start = {0, 0};
+mtrn3100::Coord goal  = {8, 8};
+
+mtrn3100::Maze maze;
+mtrn3100::Navigator nav(maze, controller, start, goal, 0);
 
 int original_yaw;
-
-// Initial robot state
-int start_row = 0, start_col = 0;
-int heading = 0; 
-
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting up!");
 
-  u8x8.begin();
-  u8x8.setPowerSave(0);
-  u8x8.clear();
-  u8x8.setFont(u8x8_font_chroma48medium8_r);
-  u8x8.drawString(0, 0, "BallerinaArduina");
-
+  //////////////////// OLED setup ////////////////////
+  // u8x8.begin();
+  // u8x8.setPowerSave(0);
+  // u8x8.clear();
+  // u8x8.setFont(u8x8_font_chroma48medium8_r);
+  // u8x8.drawString(0, 0, "BallerinaArduina");
 
   //////////////////// Lidar setup ////////////////////
   frontLidar.begin(ADDR_FRONT);
@@ -136,69 +138,122 @@ void setup() {
   Serial.println(original_yaw);
 
   delay(100);
-
-  mapping::commitCellAndRedraw(u8x8, maze, frontLidar, leftLidar, rightLidar,
-                               start_row, start_col, heading);
-
-  Serial.print(F("Start pose r=")); Serial.print(start_row);
-  Serial.print(F(" c="));           Serial.print(start_col);
-  Serial.print(F(" heading="));     Serial.println(heading);
 }
 
 void loop() {
+  //////////////////// TASK 4.1 ////////////////////
+  char sequence = [];
+  controller.sequence_move(sequence);
 
-  // Define goal cell 
-  const int goal_r = 2;
-  const int goal_c = 2;
-  
-  // Perform one autonomous mapping/navigation step
-  autonom_map(start_row, start_col, goal_r, goal_c, heading);
+  //////////////////// TASK 4.2 ////////////////////
 
-  delay(10000);
+
+  //////////////////// TASK 4.3 ////////////////////
+    // autonomous_map();
+    // delay(100000);
 }
 
 
-// Flood fill to create a graph to map the maze to the goal while tracking where it is
-void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) {
-  int row = start_r;
-  int col = start_c;
+void autonomous_map() {
+  // mapping::commitCellAndRedraw(u8x8, maze, frontLidar, leftLidar, rightLidar, 0, 0, 0);
 
-  while (!(row == goal_r && col == goal_c)) {
+  // Step 1: Explore maze until reaching goal
+  // nav.explore();
+  explore_stack();
 
-    // Update map with sensors for the *current cell*
-    maze.update(row, col, heading,
-                frontLidar.readMillimetres(),
-                leftLidar.readMillimetres(),
-                rightLidar.readMillimetres());
+  // Step 2: Compute shortest path
+  mtrn3100::Coord path[MAZE_ROWS * MAZE_COLS];
+  int pathLen = 0;
+  nav.shortestPath(start, goal, path, pathLen);
 
-    // // Optional if you still keep flood fill for other logic
-    // maze.flood_fill(goal_r, goal_c);
+  // Step 3: Go back to start
+  mtrn3100::Coord backPath[MAZE_ROWS * MAZE_COLS];
+  int backLen = 0;
+  nav.shortestPath(nav.pos, start, backPath, backLen);
+  nav.followPath(backPath, backLen);
 
-    // Choose a step that is strictly closer than the current cell
-    int dir = maze.choose_best_dir(row, col, goal_r, goal_c);
-    if (dir == -1) {
-      // No strictly-closer neighbour → either at goal or boxed in
-      break;
+  // Step 4: Follow shortest path to goal
+  nav.followPath(path, pathLen);
+
+  Serial.println("Navigation complete.");
+}
+
+void explore() {
+  // Simple DFS exploration until reaching goal
+  dfs(nav.pos);
+}
+
+void dfs(mtrn3100::Coord c) {
+  maze.grid[c.y][c.x].visited = true;
+  if (c == goal) return;
+
+  // Check walls using lidar
+  nav.updateWalls();
+  for (int d = 0; d < 4; d++) {
+    mtrn3100::Coord next = maze.neighbor(c, (direction)d);
+    if (maze.inBounds(next) &&
+      !maze.grid[next.y][next.x].visited &&
+      !maze.grid[c.y][c.x].walls[d]) 
+    {
+      controller.move_direction((direction)d);
+        // mtrn3100::drawMaze(
+        //   u8x8,
+        //   maze,
+        //   c.y,      
+        //   c.x,     
+        //   (direction)d,
+        //   mtrn3100::countVisitedCells(maze),
+        //   MAZE_ROWS * MAZE_COLS - NUM_CORNER_CELLS,
+        //   mtrn3100::percentVisited(maze)
+        // );
+      nav.heading = (direction)d;
+      nav.pos = next;
+
+      dfs(next);
+
+      // Backtrack
+      controller.move_direction((direction)((d + 2) % 4));
+      nav.heading = (direction)d;
+      nav.pos = c;
+      controller.move_direction((direction)d); // restore orientation
+      nav.heading = (direction)d;
     }
-
-    Serial.print("Moving from: ");
-    Serial.print(row);
-    Serial.print(" ");
-    Serial.print(col);
-    Serial.print("Heading ");
-    Serial.println(heading);
-
-    // Command the move (ideally blocking until cell center reached)
-    controller.move_direction(dir);
-
-    // Update discrete pose
-    row += row_step[dir];
-    col += col_step[dir];
-    heading = dir;  // absolute headings must match N,E,S,W = 0..3
   }
+}
 
-  Serial.println("Reached goal!");
-  leftMotor.setPWM(MOTOFF);
-  rightMotor.setPWM(MOTOFF);
-  delay(10000);
+void explore_stack() {
+  mtrn3100::Coord stack[MAZE_ROWS * MAZE_COLS];
+  int top = 0;
+  stack[top++] = nav.pos;
+
+  while (top > 0) {
+    mtrn3100::Coord c = stack[--top];
+    maze.grid[c.y][c.x].visited = true;
+
+    if (c == goal) return;
+
+    nav.updateWalls();
+
+    for (int d = 0; d < 4; d++) {
+      mtrn3100::Coord next = maze.neighbor(c, (direction)d);
+      if (maze.inBounds(next) &&
+          !maze.grid[next.y][next.x].visited &&
+          !maze.grid[c.y][c.x].walls[d]) {
+        
+        controller.move_direction((direction)d);
+        nav.heading = (direction)d;
+        nav.pos = next;
+
+        // mtrn3100::drawMaze(
+        //   u8x8, maze,
+        //   nav.pos.y, nav.pos.x, nav.heading,
+        //   mtrn3100::countVisitedCells(maze),
+        //   MAZE_ROWS * MAZE_COLS - NUM_CORNER_CELLS,
+        //   mtrn3100::percentVisited(maze)
+        // );
+
+        stack[top++] = next;
+      }
+    }
+  }
 }

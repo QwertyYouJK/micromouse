@@ -1,6 +1,6 @@
 #pragma once
 #include <U8x8lib.h>
-#include "Task_4_maze_map.hpp"
+#include "Task_4_autonom.hpp"
 
 // Build a single 8x8 tile for one cell based on walls/visited/robot.
 // NOTE: If left/right walls show mirrored, swap 0x01 and 0x80 below (bit order differs on some modules).

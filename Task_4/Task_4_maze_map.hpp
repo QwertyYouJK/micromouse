@@ -10,8 +10,8 @@
 #define FLOOD_FILL_INF 255
 
 // offsets for N,E,S,W (row increases downward, col increases right)
-static const int row_step[4] = {-1, 0, +1, 0};
-static const int col_step[4] = {0, +1,  0, -1};
+// static const int row_step[4] = {-1, 0, +1, 0};
+// static const int col_step[4] = {0, +1,  0, -1};
 
 namespace mtrn3100 {
 
@@ -294,3 +294,48 @@ private:
 };
 
 }  // namespace mtrn3100
+
+// // Flood fill to create a graph to map the maze to the goal while tracking where it is
+// void autonom_map(int start_r, int start_c, int goal_r, int goal_c, int heading) {
+//   int row = start_r;
+//   int col = start_c;
+
+//   while (!(row == goal_r && col == goal_c)) {
+
+//     // Update map with sensors for the *current cell*
+//     maze.update(row, col, heading,
+//                 frontLidar.readMillimetres(),
+//                 leftLidar.readMillimetres(),
+//                 rightLidar.readMillimetres());
+
+//     // // Optional if you still keep flood fill for other logic
+//     // maze.flood_fill(goal_r, goal_c);
+
+//     // Choose a step that is strictly closer than the current cell
+//     int dir = maze.choose_best_dir(row, col, goal_r, goal_c);
+//     if (dir == -1) {
+//       // No strictly-closer neighbour → either at goal or boxed in
+//       break;
+//     }
+
+//     Serial.print("Moving from: ");
+//     Serial.print(row);
+//     Serial.print(" ");
+//     Serial.print(col);
+//     Serial.print("Heading ");
+//     Serial.println(heading);
+
+//     // Command the move (ideally blocking until cell center reached)
+//     controller.move_direction(dir);
+
+//     // Update discrete pose
+//     row += row_step[dir];
+//     col += col_step[dir];
+//     heading = dir;  // absolute headings must match N,E,S,W = 0..3
+//   }
+
+//   Serial.println("Reached goal!");
+//   leftMotor.setPWM(MOTOFF);
+//   rightMotor.setPWM(MOTOFF);
+//   delay(10000);
+// }
